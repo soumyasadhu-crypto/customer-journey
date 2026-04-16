@@ -48,6 +48,8 @@ export default function Analytics({ data, rawData }) {
     refundsByMonth,
     refundsByRegion,
     refundsByChannel,
+    refundsByClassesBucket,
+    refundsByTenure,
     avgClassesCompleted,
     totalRefundedINR,
     totalReferrals,
@@ -180,10 +182,16 @@ export default function Analytics({ data, rawData }) {
             {renderBarChart(refundsByRegion, totalRefunds, '#7C3AED')}
           </div>
 
-          {/* Refunds by Channel */}
+          {/* Refunds by Classes Refunded Bucket */}
           <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Refunds by Channel (Payment Gateway)</h4>
-            {renderBarChart(refundsByChannel, totalRefunds, '#059669')}
+            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Refunds by Classes Refunded Bucket</h4>
+            {renderBarChart(refundsByClassesBucket, totalRefunds, '#059669')}
+          </div>
+
+          {/* Refunds by Tenure */}
+          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Refunds by Tenure (Months)</h4>
+            {renderBarChart(refundsByTenure, totalRefunds, '#EA580C')}
           </div>
         </div>
       )}

@@ -241,11 +241,18 @@ export function useFunnelData() {
       refundsByRegion[reg] = (refundsByRegion[reg] || 0) + 1;
     });
     
-    // Refunds by channel (from payment gateway or mode)
-    const refundsByChannel = {};
+    // Refunds by classes_refunded_bucket (e.g., 0-12, 13-24, etc.)
+    const refundsByClassesBucket = {};
     filteredRefunds.forEach(r => {
-      const channel = r.payment_gateway || r.refund_mode || 'Unknown';
-      refundsByChannel[channel] = (refundsByChannel[channel] || 0) + 1;
+      const bucket = r.classes_refunded_bucket || 'Unknown';
+      refundsByClassesBucket[bucket] = (refundsByClassesBucket[bucket] || 0) + 1;
+    });
+    
+    // Refunds by tenure (months)
+    const refundsByTenure = {};
+    filteredRefunds.forEach(r => {
+      const tenure = r.tenure || 'Unknown';
+      refundsByTenure[tenure] = (refundsByTenure[tenure] || 0) + 1;
     });
     
     // Average classes completed before refund
@@ -271,7 +278,9 @@ export function useFunnelData() {
       refundsByReason: refundsByMonth,
       refundsByMonth,
       refundsByRegion,
-      refundsByChannel,
+      refundsByChannel: refundsByClassesBucket,
+      refundsByClassesBucket,
+      refundsByTenure,
       avgClassesCompleted,
       totalRefundedINR,
       totalReferrals,
