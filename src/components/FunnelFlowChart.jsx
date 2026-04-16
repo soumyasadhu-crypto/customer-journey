@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 
 export default function FunnelFlowChart({ data, rawData }) {
   const [selectedChannel, setSelectedChannel] = useState(null);
+  const { user } = useAuth();
 
   if (!data || !data.channelBreakdown) {
     return <div className="funnel-section">Loading...</div>;
@@ -39,6 +41,10 @@ export default function FunnelFlowChart({ data, rawData }) {
   ];
 
   const handleExport = (stageName) => {
+    if (!user) {
+      alert('Please sign in to export data');
+      return;
+    }
     if (!rawData?.leads) {
       alert('Data not available');
       return;

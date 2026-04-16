@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 const LEADS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/54270c59-cacc-0508-4d21-aabc60fd7c82';
 const TRIALS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/683ebbd2-a157-5d3d-8584-999c57c917db';
 const PAYMENTS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/2a1f418e-b45c-b488-406a-2b4c5fad1032';
+const REFUNDS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/840e58d1-be86-c768-6244-ab30d1157395';
+const REFERRALS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/b8f41fdc-31ab-2529-39ef-c68fb004d949';
 
 function parseCSV(csvText) {
   const lines = csvText.trim().split('\n');
@@ -22,8 +24,9 @@ function parseCSV(csvText) {
 export function useFunnelData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [rawData, setRawData] = useState({ leads: [], trials: [], payments: [] });
+  const [rawData, setRawData] = useState({ leads: [], trials: [], payments: [], refunds: [], referrals: [] });
   const [funnelData, setFunnelData] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState(null);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [availableBuckets, setAvailableBuckets] = useState([]);
   
@@ -35,19 +38,23 @@ export function useFunnelData() {
     async function fetchAllData() {
       try {
         setLoading(true);
-        const [leadsRes, trialsRes, paymentsRes] = await Promise.all([
-          fetch(LEADS_URL), fetch(TRIALS_URL), fetch(PAYMENTS_URL)
+        const [leadsRes, trialsRes, paymentsRes, refundsRes, referralsRes] = await Promise.all([
+          fetch(LEADS_URL), fetch(TRIALS_URL), fetch(PAYMENTS_URL), 
+          fetch(REFUNDS_URL), fetch(REFERRALS_URL)
         ]);
-        const [leadsTxt, trialsTxt, paymentsTxt] = await Promise.all([
-          leadsRes.text(), trialsRes.text(), paymentsRes.text()
+        const [leadsTxt, trialsTxt, paymentsTxt, refundsTxt, referralsTxt] = await Promise.all([
+          leadsRes.text(), trialsRes.text(), paymentsRes.text(),
+          refundsRes.text(), referralsRes.text()
         ]);
         const leads = parseCSV(leadsTxt);
         const trials = parseCSV(trialsTxt);
         const payments = parseCSV(paymentsTxt);
+        const refunds = parseCSV(refundsTxt);
+        const referrals = parseCSV(referralsTxt);
         
         setAvailableMonths([...new Set(leads.map(l => l.lead_created_month).filter(Boolean))].sort().reverse());
         setAvailableBuckets([...new Set(leads.map(l => l.country_bucket).filter(Boolean))].sort());
-        setRawData({ leads, trials, payments });
+        setRawData({ leads, trials, payments, refunds, referrals });
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -147,10 +154,43 @@ export function useFunnelData() {
       paymentPending: paymentPendingIds.size,
       enrolled: enrolledIds.size
     });
+
+    // Analytics calculations
+    const refunds = rawData.refunds;
+    const referrals = rawData.referrals;
+    
+    // Refund metrics
+    const totalRefunds = refunds.length;
+    const refundedAmount = refunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount) || 0), 0);
+    const refundsByReason = {};
+    refunds.forEach(r => {
+      const reason = r.refund_reason || 'Unknown';
+      refundsByReason[reason] = (refundsByReason[reason] || 0) + 1;
+    });
+    
+    // Referral metrics
+    const totalReferrals = referrals.length;
+    const acceptedReferrals = referrals.filter(r => r.status === 'Accepted' || r.status === 'converted').length;
+    const pendingReferrals = referrals.filter(r => r.status === 'Pending').length;
+    const referralsByChannel = {};
+    referrals.forEach(r => {
+      const channel = r.channel || 'Direct';
+      referralsByChannel[channel] = (referralsByChannel[channel] || 0) + 1;
+    });
+
+    setAnalyticsData({
+      totalRefunds,
+      refundedAmount,
+      refundsByReason,
+      totalReferrals,
+      acceptedReferrals,
+      pendingReferrals,
+      referralsByChannel
+    });
   }, [month, region, countryBuckets, rawData]);
 
   return { 
-    loading, error, funnelData, availableMonths, availableBuckets,
+    loading, error, funnelData, analyticsData, availableMonths, availableBuckets,
     month, setMonth, region, setRegion, countryBuckets, setCountryBuckets, rawData
   };
 }

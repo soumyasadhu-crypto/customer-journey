@@ -14,8 +14,14 @@ const navItems = [
   { id: 'settings', label: 'Settings', icon: FiSettings },
 ];
 
-export default function Sidebar({ isOpen, onClose }) {
-  const [activeItem, setActiveItem] = useState('dashboard');
+export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }) {
+  const [localActive, setLocalActive] = useState(activeTab || 'dashboard');
+
+  const handleItemClick = (id) => {
+    setLocalActive(id);
+    if (onTabChange) onTabChange(id);
+    if (onClose) onClose();
+  };
 
   return (
     <>
@@ -33,8 +39,8 @@ export default function Sidebar({ isOpen, onClose }) {
           {navItems.map(item => (
             <div
               key={item.id}
-              className={`nav-item ${activeItem === item.id ? 'active' : ''}`}
-              onClick={() => setActiveItem(item.id)}
+              className={`nav-item ${localActive === item.id ? 'active' : ''}`}
+              onClick={() => handleItemClick(item.id)}
             >
               <item.icon />
               <span>{item.label}</span>

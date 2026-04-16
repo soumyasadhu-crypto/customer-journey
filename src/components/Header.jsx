@@ -1,4 +1,5 @@
-import { FiMenu } from 'react-icons/fi';
+import { FiMenu, FiLogOut } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 
 export default function Header({ 
   onMenuClick, 
@@ -7,6 +8,7 @@ export default function Header({
   countryBuckets, onCountryBucketsChange,
   availableMonths, availableBuckets 
 }) {
+  const { user, logout } = useAuth();
   const rowBucketOptions = availableBuckets?.filter(b => b !== 'India') || [];
   const standardBuckets = ['ANZ', 'SGHK', 'UK', 'Other APAC', 'ME'];
   const otherBuckets = rowBucketOptions.filter(b => !standardBuckets.includes(b));
@@ -74,6 +76,24 @@ export default function Header({
             ))}
           </div>
         )}
+        <button
+          onClick={logout}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 12px',
+            background: '#FEE2E2',
+            border: '1px solid #FECACA',
+            borderRadius: 6,
+            fontSize: 13,
+            color: '#DC2626',
+            cursor: 'pointer'
+          }}
+        >
+          <FiLogOut size={14} />
+          Sign Out
+        </button>
       </div>
     </header>
   );

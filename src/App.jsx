@@ -2,12 +2,15 @@ import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import FunnelFlowChart from './components/FunnelFlowChart';
+import Analytics from './components/Analytics';
 import { useFunnelData } from './data/periscopeData';
+import { useAuth } from './context/AuthContext';
+import Login from './components/Login';
 
-export default function App() {
+function Dashboard({ activeTab }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { 
-    loading, error, funnelData, availableMonths, availableBuckets,
+    loading, error, funnelData, analyticsData, availableMonths, availableBuckets,
     month, setMonth,
     region, setRegion,
     countryBuckets, setCountryBuckets,
@@ -16,7 +19,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="main-content">
         <Header 
           onMenuClick={() => setSidebarOpen(true)}
@@ -45,12 +48,54 @@ export default function App() {
             </div>
           </div>
         )}
-        {!loading && !error && funnelData && (
+        {!loading && !error && (
           <div className="dashboard">
-            <FunnelFlowChart data={funnelData} rawData={rawData} />
+            {activeTab === 'dashboard' && funnelData && (
+              <FunnelFlowChart data={funnelData} rawData={rawData} />
+            )}
+            {activeTab === 'analytics' && analyticsData && (
+              <Analytics data={analyticsData} rawData={rawData} />
+            )}
+            {activeTab === 'reports' && (
+              <div style={{ padding: 24 }}>
+                <h2>Reports</h2>
+                <p style={{ color: '#64748B' }}>Reports section coming soon...</p>
+              </div>
+            )}
+            {activeTab === 'settings' && (
+              <div style={{ padding: 24 }}>
+                <h2>Settings</h2>
+                <p style={{ color: '#64748B' }}>Settings section coming soon...</p>
+              </div>
+            )}
           </div>
         )}
       </main>
     </div>
   );
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#F8FAFC'
+      }}>
+        <div className="loading-spinner"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
+  return <Dashboard activeTab={activeTab} />;
 }
