@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { 
   FiGrid, 
   FiBarChart2, 
@@ -15,10 +14,9 @@ const navItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }) {
-  const [localActive, setLocalActive] = useState(activeTab || 'dashboard');
+  const currentTab = activeTab || 'dashboard';
 
   const handleItemClick = (id) => {
-    setLocalActive(id);
     if (onTabChange) onTabChange(id);
     if (onClose) onClose();
   };
@@ -39,7 +37,7 @@ export default function Sidebar({ isOpen, onClose, activeTab, onTabChange }) {
           {navItems.map(item => (
             <div
               key={item.id}
-              className={`nav-item ${localActive === item.id ? 'active' : ''}`}
+              className={`nav-item ${currentTab === item.id ? 'active' : ''}`}
               onClick={() => handleItemClick(item.id)}
             >
               <item.icon />

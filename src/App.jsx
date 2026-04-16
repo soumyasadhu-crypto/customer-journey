@@ -75,7 +75,7 @@ function Dashboard({ activeTab }) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('analytics');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const { loading, error, funnelData, analyticsData, availableMonths, availableBuckets } = useFunnelData();
 
   if (loading) {
@@ -87,48 +87,10 @@ export default function App() {
         justifyContent: 'center',
         background: '#F8FAFC'
       }}>
-        <p>Loading data...</p>
+        <div className="loading-spinner"></div>
       </div>
     );
   }
 
-  return (
-    <div style={{ padding: 20, background: '#F8FAFC', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        {['dashboard', 'analytics', 'reports', 'settings'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '10px 20px',
-              background: activeTab === tab ? '#2563EB' : '#fff',
-              color: activeTab === tab ? '#fff' : '#0F172A',
-              border: '1px solid #E2E8F0',
-              borderRadius: 6,
-              cursor: 'pointer',
-              textTransform: 'capitalize'
-            }}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-      
-      {activeTab === 'analytics' && analyticsData && (
-        <div>
-          <h2>Refunds: {analyticsData.totalRefunds}</h2>
-          <p>Amount: ₹{analyticsData.refundedAmount?.toLocaleString()}</p>
-          <h2>Referrals: {analyticsData.totalReferrals}</h2>
-        </div>
-      )}
-      
-      {activeTab === 'dashboard' && funnelData && (
-        <div>
-          <h2>Total Leads: {funnelData.totalLeads}</h2>
-          <h2>Trial Scheduled: {funnelData.trialScheduled}</h2>
-          <h2>Enrolled: {funnelData.enrolled}</h2>
-        </div>
-      )}
-    </div>
-  );
+  return <Dashboard activeTab={activeTab} />;
 }
