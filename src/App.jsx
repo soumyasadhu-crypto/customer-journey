@@ -87,11 +87,20 @@ export default function App() {
         justifyContent: 'center',
         background: '#F8FAFC'
       }}>
-        <div className="loading-spinner"></div>
+        <p>Loading...</p>
       </div>
     );
   }
 
-  // TEMP: Bypass auth for testing
+  if (error) {
+    return (
+      <div style={{ padding: 40 }}>
+        <h2>Error</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    );
+  }
+
   return <Dashboard activeTab={activeTab} />;
 }
