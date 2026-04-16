@@ -5,7 +5,7 @@ import FunnelFlowChart from './components/FunnelFlowChart';
 import Analytics from './components/Analytics';
 import { useFunnelData } from './data/periscopeData';
 
-function Dashboard({ activeTab }) {
+function Dashboard({ activeTab, setActiveTab }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { 
     loading, error, funnelData, analyticsData, availableMonths, availableBuckets,
@@ -17,7 +17,7 @@ function Dashboard({ activeTab }) {
 
   return (
     <div className="app">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="main-content">
         <Header 
           onMenuClick={() => setSidebarOpen(true)}
@@ -52,8 +52,24 @@ function Dashboard({ activeTab }) {
             {activeTab === 'dashboard' && funnelData && (
               <FunnelFlowChart data={funnelData} rawData={rawData} />
             )}
-            {activeTab === 'analytics' && analyticsData && (
-              <Analytics data={analyticsData} rawData={rawData} />
+            {activeTab === 'analytics' && (
+              <div style={{ padding: 20 }}>
+                <h2>Analytics</h2>
+                {analyticsData ? (
+                  <Analytics data={analyticsData} rawData={rawData} />
+                ) : (
+                  <div style={{ padding: 40, textAlign: 'center' }}>
+                    <p>Loading analytics data...</p>
+                    <pre style={{ textAlign: 'left', fontSize: 12 }}>
+                      {JSON.stringify({ 
+                        hasData: !!rawData?.refunds?.length, 
+                        refundsCount: rawData?.refunds?.length,
+                        referralsCount: rawData?.referrals?.length 
+                      }, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
             )}
             {activeTab === 'reports' && (
               <div style={{ padding: 24 }}>
@@ -92,5 +108,5 @@ export default function App() {
     );
   }
 
-  return <Dashboard activeTab={activeTab} />;
+  return <Dashboard activeTab={activeTab} setActiveTab={setActiveTab} />;
 }
