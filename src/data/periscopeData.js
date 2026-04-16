@@ -222,12 +222,12 @@ export function useFunnelData() {
     
     // Referral metrics
     const totalReferrals = referrals.length;
-    const acceptedReferrals = referrals.filter(r => r.status === 'Accepted' || r.status === 'converted').length;
-    const pendingReferrals = referrals.filter(r => r.status === 'Pending').length;
-    const referralsByChannel = {};
+    const acceptedReferrals = referrals.filter(r => r.is_valid === 'true' || r.is_deleted === 'false').length;
+    const pendingReferrals = referrals.filter(r => r.is_deleted !== 'true').length;
+    const referralsBySource = {};
     referrals.forEach(r => {
-      const channel = r.channel || 'Direct';
-      referralsByChannel[channel] = (referralsByChannel[channel] || 0) + 1;
+      const source = r.source || 'Direct';
+      referralsBySource[source] = (referralsBySource[source] || 0) + 1;
     });
 
     setAnalyticsData({
@@ -237,7 +237,7 @@ export function useFunnelData() {
       totalReferrals,
       acceptedReferrals,
       pendingReferrals,
-      referralsByChannel
+      referralsByChannel: referralsBySource
     });
   }, [month, region, countryBuckets, rawData]);
 
