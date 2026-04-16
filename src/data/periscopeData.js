@@ -214,10 +214,10 @@ export function useFunnelData() {
     // Filter refunds by month and region
     let filteredRefunds = refunds;
     if (month !== 'all') {
-      filteredRefunds = refunds.filter(r => r.refunded_month === month);
+      filteredRefunds = filteredRefunds.filter(r => r.refunded_month === month);
     }
     if (region !== 'all') {
-      filteredRefunds = filteredRefunds.filter(r => r.derived_region === region || r.country_bucket === region);
+      filteredRefunds = filteredRefunds.filter(r => r.derived_region === region);
     }
     
     // Refund metrics
@@ -231,10 +231,10 @@ export function useFunnelData() {
       refundsByMonth[m] = (refundsByMonth[m] || 0) + 1;
     });
     
-    // Refunds by region
+    // Refunds by region (IND, IS, ROW only)
     const refundsByRegion = {};
     filteredRefunds.forEach(r => {
-      const reg = r.derived_region || r.country_bucket || 'Unknown';
+      const reg = r.derived_region || 'Unknown';
       refundsByRegion[reg] = (refundsByRegion[reg] || 0) + 1;
     });
     
