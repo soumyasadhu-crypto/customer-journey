@@ -17,7 +17,7 @@ function Dashboard({ activeTab }) {
 
   return (
     <div className="app">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeTab={activeTab} onTabChange={setActiveTab} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
       <main className="main-content">
         <Header 
           onMenuClick={() => setSidebarOpen(true)}
