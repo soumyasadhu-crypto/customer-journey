@@ -41,15 +41,27 @@ export function useFunnelData() {
         setError(null);
         
         const urls = [LEADS_URL, TRIALS_URL, PAYMENTS_URL, REFUNDS_URL, REFERRALS_URL];
-        const responses = await Promise.all(urls.map(url => fetch(url).catch(e => ({ ok: false, text: () => Promise.resolve('') })));
         
-        const texts = await Promise.all(responses.map(r => r.ok ? r.text() : ''));
+        const responses = [];
+        for (const url of urls) {
+          try {
+            const res = await fetch(url);
+            responses.push(res);
+          } catch (e) {
+            responses.push({ ok: false, text: () => '' });
+          }
+        }
         
-        const leads = parseCSV(texts[0]);
-        const trials = parseCSV(texts[1]);
-        const payments = parseCSV(texts[2]);
-        const refunds = parseCSV(texts[3]);
-        const referrals = parseCSV(texts[4]);
+        const texts = [];
+        for (const r of responses) {
+          texts.push(r.ok ? await r.text() : '');
+        }
+        
+        const leads = parseCSV(texts[0] || '');
+        const trials = parseCSV(texts[1] || '');
+        const payments = parseCSV(texts[2] || '');
+        const refunds = parseCSV(texts[3] || '');
+        const referrals = parseCSV(texts[4] || '');
         
         if (leads.length === 0 && trials.length === 0 && payments.length === 0) {
           setError('Could not fetch data from Periscope. Check network or CORS.');
