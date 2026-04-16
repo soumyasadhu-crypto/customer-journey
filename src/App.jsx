@@ -40,8 +40,9 @@ function Dashboard({ activeTab }) {
         )}
         {error && (
           <div className="dashboard">
-            <div className="error">
-              <p>Error: {error}</p>
+            <div style={{ padding: 40, textAlign: 'center' }}>
+              <h3 style={{ color: '#DC2626' }}>Error loading data</h3>
+              <p style={{ color: '#64748B' }}>{error}</p>
               <button className="retry-btn" onClick={() => window.location.reload()}>Retry</button>
             </div>
           </div>

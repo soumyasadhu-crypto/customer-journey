@@ -38,19 +38,22 @@ export function useFunnelData() {
     async function fetchAllData() {
       try {
         setLoading(true);
-        const [leadsRes, trialsRes, paymentsRes, refundsRes, referralsRes] = await Promise.all([
-          fetch(LEADS_URL), fetch(TRIALS_URL), fetch(PAYMENTS_URL), 
-          fetch(REFUNDS_URL), fetch(REFERRALS_URL)
-        ]);
-        const [leadsTxt, trialsTxt, paymentsTxt, refundsTxt, referralsTxt] = await Promise.all([
-          leadsRes.text(), trialsRes.text(), paymentsRes.text(),
-          refundsRes.text(), referralsRes.text()
-        ]);
-        const leads = parseCSV(leadsTxt);
-        const trials = parseCSV(trialsTxt);
-        const payments = parseCSV(paymentsTxt);
-        const refunds = parseCSV(refundsTxt);
-        const referrals = parseCSV(referralsTxt);
+        setError(null);
+        
+        const urls = [LEADS_URL, TRIALS_URL, PAYMENTS_URL, REFUNDS_URL, REFERRALS_URL];
+        const responses = await Promise.all(urls.map(url => fetch(url).catch(e => ({ ok: false, text: () => Promise.resolve('') })));
+        
+        const texts = await Promise.all(responses.map(r => r.ok ? r.text() : ''));
+        
+        const leads = parseCSV(texts[0]);
+        const trials = parseCSV(texts[1]);
+        const payments = parseCSV(texts[2]);
+        const refunds = parseCSV(texts[3]);
+        const referrals = parseCSV(texts[4]);
+        
+        if (leads.length === 0 && trials.length === 0 && payments.length === 0) {
+          setError('Could not fetch data from Periscope. Check network or CORS.');
+        }
         
         setAvailableMonths([...new Set(leads.map(l => l.lead_created_month).filter(Boolean))].sort().reverse());
         setAvailableBuckets([...new Set(leads.map(l => l.country_bucket).filter(Boolean))].sort());
