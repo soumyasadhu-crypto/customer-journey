@@ -211,14 +211,46 @@ export function useFunnelData() {
     const refunds = rawData.refunds;
     const referrals = rawData.referrals;
     
+    // Filter refunds by month and region
+    let filteredRefunds = refunds;
+    if (month !== 'all') {
+      filteredRefunds = refunds.filter(r => r.refunded_month === month);
+    }
+    if (region !== 'all') {
+      filteredRefunds = filteredRefunds.filter(r => r.derived_region === region || r.country_bucket === region);
+    }
+    
     // Refund metrics
-    const totalRefunds = refunds.length;
-    const refundedAmount = refunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount) || 0), 0);
-    const refundsByReason = {};
-    refunds.forEach(r => {
-      const reason = r.refund_reason || 'Unknown';
-      refundsByReason[reason] = (refundsByReason[reason] || 0) + 1;
+    const totalRefunds = filteredRefunds.length;
+    const refundedAmount = filteredRefunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount_inr) || parseFloat(r.refund_amount) || 0), 0);
+    
+    // Refunds by month
+    const refundsByMonth = {};
+    filteredRefunds.forEach(r => {
+      const m = r.refunded_month || 'Unknown';
+      refundsByMonth[m] = (refundsByMonth[m] || 0) + 1;
     });
+    
+    // Refunds by region
+    const refundsByRegion = {};
+    filteredRefunds.forEach(r => {
+      const reg = r.derived_region || r.country_bucket || 'Unknown';
+      refundsByRegion[reg] = (refundsByRegion[reg] || 0) + 1;
+    });
+    
+    // Refunds by channel (from payment gateway or mode)
+    const refundsByChannel = {};
+    filteredRefunds.forEach(r => {
+      const channel = r.payment_gateway || r.refund_mode || 'Unknown';
+      refundsByChannel[channel] = (refundsByChannel[channel] || 0) + 1;
+    });
+    
+    // Average classes completed before refund
+    const totalClassesCompleted = filteredRefunds.reduce((sum, r) => sum + (parseInt(r.classes_completed) || 0), 0);
+    const avgClassesCompleted = totalRefunds > 0 ? Math.round(totalClassesCompleted / totalRefunds) : 0;
+    
+    // Total refunded amount in INR
+    const totalRefundedINR = filteredRefunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount_inr) || 0), 0);
     
     // Referral metrics
     const totalReferrals = referrals.length;
@@ -233,7 +265,12 @@ export function useFunnelData() {
     setAnalyticsData({
       totalRefunds,
       refundedAmount,
-      refundsByReason,
+      refundsByReason: refundsByMonth,
+      refundsByMonth,
+      refundsByRegion,
+      refundsByChannel,
+      avgClassesCompleted,
+      totalRefundedINR,
       totalReferrals,
       acceptedReferrals,
       pendingReferrals,

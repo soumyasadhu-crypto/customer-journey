@@ -9,6 +9,32 @@ function formatCurrency(amount) {
   return '₹' + amount.toFixed(2);
 }
 
+function formatNumber(num) {
+  if (!num) return '0';
+  return parseInt(num).toLocaleString();
+}
+
+function renderBarChart(data, total, color = '#DC2626') {
+  if (!data || Object.keys(data).length === 0) return <p style={{ color: '#64748B' }}>No data</p>;
+  
+  return Object.entries(data).map(([key, count]) => (
+    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+      <div style={{ width: 120, fontSize: 13, color: '#374151' }}>{key}</div>
+      <div style={{ flex: 1, height: 20, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{
+          width: `${(count / total) * 100}%`,
+          height: '100%',
+          background: color,
+          borderRadius: 4
+        }} />
+      </div>
+      <div style={{ width: 60, textAlign: 'right', fontSize: 13, fontWeight: 600, fontFamily: 'JetBrains Mono, monospace' }}>
+        {formatNumber(count)}
+      </div>
+    </div>
+  ));
+}
+
 export default function Analytics({ data, rawData }) {
   const [activeSection, setActiveSection] = useState('refunds');
 
@@ -19,7 +45,11 @@ export default function Analytics({ data, rawData }) {
   const {
     totalRefunds,
     refundedAmount,
-    refundsByReason,
+    refundsByMonth,
+    refundsByRegion,
+    refundsByChannel,
+    avgClassesCompleted,
+    totalRefundedINR,
     totalReferrals,
     acceptedReferrals,
     pendingReferrals,
@@ -27,7 +57,6 @@ export default function Analytics({ data, rawData }) {
   } = data;
 
   const referralRate = totalReferrals > 0 ? ((acceptedReferrals / totalReferrals) * 100).toFixed(1) : 0;
-  const refundRate = rawData?.payments?.length > 0 ? ((totalRefunds / rawData.payments.length) * 100).toFixed(1) : 0;
 
   const handleExport = () => {
     if (!rawData) {
@@ -116,60 +145,45 @@ export default function Analytics({ data, rawData }) {
       </div>
 
       {activeSection === 'refunds' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            <div style={{
-              padding: 20,
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Key Metrics */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Total Refunds</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>{totalRefunds}</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>{formatNumber(totalRefunds)}</p>
             </div>
-            <div style={{
-              padding: 20,
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Refunded Amount</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>{formatCurrency(refundedAmount)}</p>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Refunded Amount (INR)</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>{formatCurrency(totalRefundedINR)}</p>
             </div>
-            <div style={{
-              padding: 20,
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Avg Classes Before Refund</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>{formatNumber(avgClassesCompleted)}</p>
+            </div>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Refund Rate</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>{refundRate}%</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>
+                {rawData?.payments?.length > 0 ? ((totalRefunds / rawData.payments.length) * 100).toFixed(1) : 0}%
+              </p>
             </div>
           </div>
 
-          <div style={{
-            padding: 20,
-            background: '#fff',
-            borderRadius: 8,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
-            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Refunds by Reason</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {Object.entries(refundsByReason).map(([reason, count]) => (
-                <div key={reason} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 150, fontSize: 14, color: '#374151' }}>{reason}</div>
-                  <div style={{ flex: 1, height: 24, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${(count / totalRefunds) * 100}%`,
-                      height: '100%',
-                      background: '#DC2626',
-                      borderRadius: 4
-                    }} />
-                  </div>
-                  <div style={{ width: 50, textAlign: 'right', fontSize: 14, fontWeight: 600 }}>{count}</div>
-                </div>
-              ))}
-            </div>
+          {/* Refunds by Month */}
+          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Refunds by Month</h4>
+            {renderBarChart(refundsByMonth, totalRefunds, '#DC2626')}
+          </div>
+
+          {/* Refunds by Region */}
+          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Refunds by Region</h4>
+            {renderBarChart(refundsByRegion, totalRefunds, '#7C3AED')}
+          </div>
+
+          {/* Refunds by Channel */}
+          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Refunds by Channel (Payment Gateway)</h4>
+            {renderBarChart(refundsByChannel, totalRefunds, '#059669')}
           </div>
         </div>
       )}
@@ -177,58 +191,23 @@ export default function Analytics({ data, rawData }) {
       {activeSection === 'referrals' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            <div style={{
-              padding: 20,
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Total Referrals</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{totalReferrals}</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{formatNumber(totalReferrals)}</p>
             </div>
-            <div style={{
-              padding: 20,
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Accepted</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{acceptedReferrals}</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{formatNumber(acceptedReferrals)}</p>
             </div>
-            <div style={{
-              padding: 20,
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Conversion Rate</p>
               <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{referralRate}%</p>
             </div>
           </div>
 
-          <div style={{
-            padding: 20,
-            background: '#fff',
-            borderRadius: 8,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-          }}>
+          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Referrals by Channel</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {Object.entries(referralsByChannel).map(([channel, count]) => (
-                <div key={channel} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 150, fontSize: 14, color: '#374151' }}>{channel}</div>
-                  <div style={{ flex: 1, height: 24, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${(count / totalReferrals) * 100}%`,
-                      height: '100%',
-                      background: '#10B981',
-                      borderRadius: 4
-                    }} />
-                  </div>
-                  <div style={{ width: 50, textAlign: 'right', fontSize: 14, fontWeight: 600 }}>{count}</div>
-                </div>
-              ))}
-            </div>
+            {renderBarChart(referralsByChannel, totalReferrals, '#10B981')}
           </div>
         </div>
       )}
