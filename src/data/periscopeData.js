@@ -217,7 +217,10 @@ export function useFunnelData() {
       filteredRefunds = filteredRefunds.filter(r => r.refunded_month === month);
     }
     if (region !== 'all') {
-      filteredRefunds = filteredRefunds.filter(r => r.derived_region === region);
+      // Map India -> IND, ROW -> ROW
+      const regionMap = { 'India': 'IND', 'ROW': 'ROW', 'IS': 'IS' };
+      const mappedRegion = regionMap[region] || region;
+      filteredRefunds = filteredRefunds.filter(r => r.derived_region === mappedRegion);
     }
     
     // Refund metrics
