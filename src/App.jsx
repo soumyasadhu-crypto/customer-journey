@@ -4,8 +4,6 @@ import Header from './components/Header';
 import FunnelFlowChart from './components/FunnelFlowChart';
 import Analytics from './components/Analytics';
 import { useFunnelData } from './data/periscopeData';
-import { useAuth } from './context/AuthContext';
-import Login from './components/Login';
 
 function Dashboard({ activeTab }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -77,7 +75,7 @@ function Dashboard({ activeTab }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { user, loading } = useAuth();
+  const { loading, error, funnelData, analyticsData, availableMonths, availableBuckets } = useFunnelData();
 
   if (loading) {
     return (
@@ -93,9 +91,6 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return <Login />;
-  }
-
+  // TEMP: Bypass auth for testing
   return <Dashboard activeTab={activeTab} />;
 }
