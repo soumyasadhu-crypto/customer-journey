@@ -146,7 +146,9 @@ export function useFunnelData() {
   useEffect(() => {
     if (!rawData.leads.length) return;
 
-    let leads = rawData.leads.filter(l => l.channel !== 'Organic Content' && l.prospectstage !== 'Enrolled');
+    // Keep enrolled leads in the set — they contribute to totals and breakdowns.
+    // Pending stages exclude them explicitly via enrolledIds checks below.
+    let leads = rawData.leads.filter(l => l.channel !== 'Organic Content');
     let trials = rawData.trials.filter(t => t.channel !== 'Organic Content');
     let payments = rawData.payments;
 
@@ -199,23 +201,22 @@ export function useFunnelData() {
     });
 
     const leadsWithTrials = new Set([...trialMap.keys()]);
-    // Schedule Pending excludes both trial-scheduled and future-scheduled leads
+
+    const enrolledIds = new Set();
+    payments.forEach(p => { if (p.prospectid) enrolledIds.add(p.prospectid); });
+
+    // Schedule Pending: lead created, trial NOT scheduled (and not enrolled)
     const leadsWithoutTrials = leads.filter(l =>
       !leadsWithTrials.has(l.prospectid) &&
       !futureScheduledIds.has(l.prospectid) &&
-      l.prospectstage !== 'Enrolled'
+      !enrolledIds.has(l.prospectid)
     ).length;
 
     const trialPendingIds = new Set();
     const trialDoneIds = new Set();
     const paymentPendingIds = new Set();
-    const enrolledIds = new Set();
 
-    // Count all payments as enrolled (not just mode === 'GA')
-    payments.forEach(p => { if (p.prospectid) enrolledIds.add(p.prospectid); });
-
-    // Build trial done/pending directly from trials table so enrolled leads
-    // (filtered out of `leads`) are still counted correctly
+    // Trial Pending / Trial Done: built directly from trials table
     trialMap.forEach((t, id) => {
       if (t.demo_state === 'DONE') {
         trialDoneIds.add(id);
@@ -224,11 +225,11 @@ export function useFunnelData() {
       }
     });
 
-    // Payment pending: trial done, not yet paid, not already marked enrolled
+    // Payment Pending: trial done, payment NOT made
     leads.forEach(l => {
       const s = l.prospectid;
       if (!s || !trialDoneIds.has(s) || enrolledIds.has(s)) return;
-      if (l.prospectstage !== 'Enrolled') paymentPendingIds.add(s);
+      paymentPendingIds.add(s);
     });
 
     // Build per-channel breakdown
@@ -337,14 +338,21 @@ export function useFunnelData() {
 }
 
 function buildBreakdown(total, leadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds, futureScheduledIds) {
+  const ids = [...leadSet];
   return {
     total,
-    futureScheduled: [...leadSet].filter(id => futureScheduledIds.has(id)).length,
-    notScheduled: [...leadSet].filter(id => !trialScheduledSet.has(id) && !futureScheduledIds.has(id)).length,
-    scheduled: [...leadSet].filter(id => trialScheduledSet.has(id)).length,
-    trialPending: [...leadSet].filter(id => trialPendingIds.has(id)).length,
-    trialDone: [...leadSet].filter(id => trialDoneIds.has(id)).length,
-    paymentPending: [...leadSet].filter(id => paymentPendingIds.has(id)).length,
-    enrolled: [...leadSet].filter(id => enrolledIds.has(id)).length,
+    // Schedule Pending: no trial, no future scheduled, not enrolled
+    notScheduled: ids.filter(id => !trialScheduledSet.has(id) && !futureScheduledIds.has(id) && !enrolledIds.has(id)).length,
+    futureScheduled: ids.filter(id => futureScheduledIds.has(id)).length,
+    // Trial Scheduled: has a trial record (any non-future state)
+    scheduled: ids.filter(id => trialScheduledSet.has(id)).length,
+    // Trial Pending: trial scheduled but not DONE
+    trialPending: ids.filter(id => trialPendingIds.has(id)).length,
+    // Trial Done: trial conducted (DONE)
+    trialDone: ids.filter(id => trialDoneIds.has(id)).length,
+    // Payment Pending: trial done, no payment
+    paymentPending: ids.filter(id => paymentPendingIds.has(id)).length,
+    // Enrolled: payment made
+    enrolled: ids.filter(id => enrolledIds.has(id)).length,
   };
 }
