@@ -146,25 +146,17 @@ export function useFunnelData() {
   useEffect(() => {
     if (!rawData.leads.length) return;
 
+    // 1. Filter leads to define the cohort — month filter uses lead_created_month only on leads
     let leads = rawData.leads.filter(l => l.channel !== 'Organic Content' && l.prospectstage !== 'Enrolled');
-    let trials = rawData.trials.filter(t => t.channel !== 'Organic Content');
-    let payments = rawData.payments;
 
-    if (month !== 'all') {
-      leads = leads.filter(l => l.lead_created_month === month);
-      trials = trials.filter(t => t.lead_created_month === month);
-      payments = payments.filter(p => p.lead_created_month === month);
-    }
-    if (region !== 'all') {
-      leads = leads.filter(l => l.region === region);
-      trials = trials.filter(t => t.region === region);
-      payments = payments.filter(p => p.region === region);
-    }
-    if (countryBuckets.length > 0) {
-      leads = leads.filter(l => countryBuckets.includes(l.country_bucket));
-      trials = trials.filter(t => countryBuckets.includes(t.country_bucket));
-      payments = payments.filter(p => countryBuckets.includes(p.country_bucket));
-    }
+    if (month !== 'all') leads = leads.filter(l => l.lead_created_month === month);
+    if (region !== 'all') leads = leads.filter(l => l.region === region);
+    if (countryBuckets.length > 0) leads = leads.filter(l => countryBuckets.includes(l.country_bucket));
+
+    // 2. Scope trials and payments to the same cohort via prospectid — no independent month/region filter
+    const cohortIds = new Set(leads.map(l => l.prospectid).filter(Boolean));
+    const trials = rawData.trials.filter(t => t.channel !== 'Organic Content' && cohortIds.has(t.prospectid));
+    const payments = rawData.payments.filter(p => cohortIds.has(p.prospectid));
 
     // Build campaign lookup: prospectid → campaign label
     const prospectToCampaign = new Map();
