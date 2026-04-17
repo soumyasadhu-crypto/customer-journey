@@ -77,20 +77,17 @@ export default function Header({
           </div>
         )}
         {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 12, color: '#64748B' }}>{user}</span>
-            <button
-              onClick={logout}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '6px 10px', background: '#FEE2E2',
-                border: '1px solid #FECACA', borderRadius: 6,
-                fontSize: 12, color: '#DC2626', cursor: 'pointer'
-              }}
-            >
-              <FiLogOut size={13} /> Sign Out
-            </button>
-          </div>
+          <button
+            onClick={logout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 10px', background: '#FEE2E2',
+              border: '1px solid #FECACA', borderRadius: 6,
+              fontSize: 12, color: '#DC2626', cursor: 'pointer'
+            }}
+          >
+            <FiLogOut size={13} /> Sign Out
+          </button>
         )}
       </div>
     </header>

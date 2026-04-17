@@ -1,29 +1,27 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = 'cuemath_export_email';
+const STORAGE_KEY = 'cuemath_export_auth';
+const EXPORT_PASSWORD = 'CustomerJourney';
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => localStorage.getItem(STORAGE_KEY) || null);
+  const [user, setUser] = useState(() => localStorage.getItem(STORAGE_KEY) === 'true');
 
-  const authorizeWithEmail = (email) => {
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed.endsWith('@cuemath.com')) {
-      return 'Only @cuemath.com email addresses are allowed.';
-    }
-    localStorage.setItem(STORAGE_KEY, trimmed);
-    setUser(trimmed);
-    return null; // no error
+  const authorizeWithPassword = (password) => {
+    if (password !== EXPORT_PASSWORD) return 'Incorrect password.';
+    localStorage.setItem(STORAGE_KEY, 'true');
+    setUser(true);
+    return null;
   };
 
   const logout = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setUser(null);
+    setUser(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, authorizeWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, authorizeWithPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

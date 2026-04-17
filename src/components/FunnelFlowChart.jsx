@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { FiDownload, FiX } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
-function EmailGateModal({ onAuthorize, onClose }) {
-  const [email, setEmail] = useState('');
+function PasswordGateModal({ onAuthorize, onClose }) {
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const err = onAuthorize(email);
+    const err = onAuthorize(password);
     if (err) setError(err);
   };
 
@@ -22,7 +22,7 @@ function EmailGateModal({ onAuthorize, onClose }) {
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Enter your email to export</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Enter password to export</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}>
             <FiX size={18} />
           </button>
@@ -30,10 +30,10 @@ function EmailGateModal({ onAuthorize, onClose }) {
         <form onSubmit={handleSubmit}>
           <input
             autoFocus
-            type="email"
-            placeholder="you@cuemath.com"
-            value={email}
-            onChange={e => { setEmail(e.target.value); setError(''); }}
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setError(''); }}
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 6, fontSize: 14,
               border: error ? '1px solid #EF4444' : '1px solid #E2E8F0',
@@ -48,9 +48,6 @@ function EmailGateModal({ onAuthorize, onClose }) {
             Confirm
           </button>
         </form>
-        <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 12, textAlign: 'center' }}>
-          Only @cuemath.com addresses are permitted
-        </p>
       </div>
     </div>
   );
@@ -62,7 +59,7 @@ export default function FunnelFlowChart({ data, rawData }) {
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [showEmailGate, setShowEmailGate] = useState(false);
   const [pendingExport, setPendingExport] = useState(null);
-  const { user, authorizeWithEmail } = useAuth();
+  const { user, authorizeWithPassword } = useAuth();
 
   if (!data || !data.channelBreakdown) {
     return <div className="funnel-section">Loading...</div>;
@@ -116,8 +113,8 @@ export default function FunnelFlowChart({ data, rawData }) {
     runExport(stageName);
   };
 
-  const handleEmailAuthorized = (email) => {
-    const err = authorizeWithEmail(email);
+  const handlePasswordAuthorized = (password) => {
+    const err = authorizeWithPassword(password);
     if (err) return err;
     setShowEmailGate(false);
     if (pendingExport) runExport(pendingExport);
@@ -223,8 +220,8 @@ export default function FunnelFlowChart({ data, rawData }) {
   return (
     <div className="funnel-section">
       {showEmailGate && (
-        <EmailGateModal
-          onAuthorize={handleEmailAuthorized}
+        <PasswordGateModal
+          onAuthorize={handlePasswordAuthorized}
           onClose={() => { setShowEmailGate(false); setPendingExport(null); }}
         />
       )}
