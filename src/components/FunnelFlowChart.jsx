@@ -79,7 +79,7 @@ export default function FunnelFlowChart({ data, rawData }) {
     if (viewMode === 'channel' && selectedChannel) {
       leads = leads.filter(l => l.channel === selectedChannel);
     } else if (viewMode === 'campaign' && selectedCampaign) {
-      leads = leads.filter(l => (prospectToCampaign.get(l.prospectid) || 'Unknown') === selectedCampaign);
+      leads = leads.filter(l => prospectToCampaign.get(l.prospectid) === selectedCampaign);
     }
 
     let filteredLeads = [];

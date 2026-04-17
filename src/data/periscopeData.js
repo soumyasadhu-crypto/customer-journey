@@ -179,7 +179,8 @@ export function useFunnelData() {
 
     const campaignCounts = {};
     leads.forEach(l => {
-      const camp = prospectToCampaign.get(l.prospectid) || 'Unknown';
+      const camp = prospectToCampaign.get(l.prospectid);
+      if (!camp) return; // exclude leads with no campaign mapping
       campaignCounts[camp] = (campaignCounts[camp] || 0) + 1;
     });
 
@@ -227,7 +228,7 @@ export function useFunnelData() {
     const campaignBreakdown = {};
     Object.keys(campaignCounts).forEach(camp => {
       const campLeadIds = leads
-        .filter(l => (prospectToCampaign.get(l.prospectid) || 'Unknown') === camp)
+        .filter(l => prospectToCampaign.get(l.prospectid) === camp)
         .map(l => l.prospectid);
       const campLeadSet = new Set(campLeadIds);
       campaignBreakdown[camp] = buildBreakdown(campaignCounts[camp], campLeadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds);
