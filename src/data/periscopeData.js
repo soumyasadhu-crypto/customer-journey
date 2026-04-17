@@ -186,15 +186,25 @@ export function useFunnelData() {
 
     const trialMap = new Map();
     const trialScheduledSet = new Set();
+    const futureScheduledIds = new Set();
     trials.forEach(t => {
       if (t.prospectid) {
-        trialMap.set(t.prospectid, t);
-        trialScheduledSet.add(t.prospectid);
+        if (t.demo_state === 'Future Scheduled') {
+          futureScheduledIds.add(t.prospectid);
+        } else {
+          trialMap.set(t.prospectid, t);
+          trialScheduledSet.add(t.prospectid);
+        }
       }
     });
 
     const leadsWithTrials = new Set([...trialMap.keys()]);
-    const leadsWithoutTrials = leads.filter(l => !leadsWithTrials.has(l.prospectid) && l.prospectstage !== 'Enrolled').length;
+    // Schedule Pending excludes both trial-scheduled and future-scheduled leads
+    const leadsWithoutTrials = leads.filter(l =>
+      !leadsWithTrials.has(l.prospectid) &&
+      !futureScheduledIds.has(l.prospectid) &&
+      l.prospectstage !== 'Enrolled'
+    ).length;
 
     const trialPendingIds = new Set();
     const trialDoneIds = new Set();
@@ -221,7 +231,7 @@ export function useFunnelData() {
     Object.keys(channelCounts).forEach(ch => {
       const chLeadIds = leads.filter(l => l.channel === ch).map(l => l.prospectid);
       const chLeadSet = new Set(chLeadIds);
-      channelBreakdown[ch] = buildBreakdown(channelCounts[ch], chLeadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds);
+      channelBreakdown[ch] = buildBreakdown(channelCounts[ch], chLeadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds, futureScheduledIds);
     });
 
     // Build per-campaign breakdown
@@ -231,7 +241,7 @@ export function useFunnelData() {
         .filter(l => prospectToCampaign.get(l.prospectid) === camp)
         .map(l => l.prospectid);
       const campLeadSet = new Set(campLeadIds);
-      campaignBreakdown[camp] = buildBreakdown(campaignCounts[camp], campLeadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds);
+      campaignBreakdown[camp] = buildBreakdown(campaignCounts[camp], campLeadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds, futureScheduledIds);
     });
 
     setFunnelData({
@@ -241,6 +251,7 @@ export function useFunnelData() {
       channelBreakdown,
       campaignCounts,
       campaignBreakdown,
+      futureScheduled: futureScheduledIds.size,
       trialScheduled: trialScheduledSet.size,
       trialPending: trialPendingIds.size,
       trialDone: trialDoneIds.size,
@@ -320,11 +331,12 @@ export function useFunnelData() {
   };
 }
 
-function buildBreakdown(total, leadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds) {
+function buildBreakdown(total, leadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds, futureScheduledIds) {
   return {
     total,
+    futureScheduled: [...leadSet].filter(id => futureScheduledIds.has(id)).length,
+    notScheduled: [...leadSet].filter(id => !trialScheduledSet.has(id) && !futureScheduledIds.has(id)).length,
     scheduled: [...leadSet].filter(id => trialScheduledSet.has(id)).length,
-    notScheduled: [...leadSet].filter(id => !trialScheduledSet.has(id)).length,
     trialPending: [...leadSet].filter(id => trialPendingIds.has(id)).length,
     trialDone: [...leadSet].filter(id => trialDoneIds.has(id)).length,
     paymentPending: [...leadSet].filter(id => paymentPendingIds.has(id)).length,

@@ -28,6 +28,7 @@ export default function FunnelFlowChart({ data, rawData }) {
     }
     return {
       total: data.totalLeads || 0,
+      futureScheduled: data.futureScheduled || 0,
       scheduled: data.trialScheduled || 0,
       notScheduled: data.leadsWithoutTrials || 0,
       trialPending: data.trialPending || 0,
@@ -106,6 +107,13 @@ export default function FunnelFlowChart({ data, rawData }) {
       });
     } else if (stageName === 'Enrolled') {
       filteredLeads = leads.filter(l => paidIds.has(l.prospectid));
+    } else if (stageName === 'Future Scheduled') {
+      const futureIds = new Set(
+        (rawData.trials || [])
+          .filter(t => t.demo_state === 'Future Scheduled' && t.prospectid)
+          .map(t => t.prospectid)
+      );
+      filteredLeads = leads.filter(l => futureIds.has(l.prospectid));
     }
 
     if (!filteredLeads || filteredLeads.length === 0) {
@@ -287,6 +295,61 @@ export default function FunnelFlowChart({ data, rawData }) {
             </div>
           );
         })}
+      </div>
+
+      {/* Future Scheduled — separate metric, excluded from main funnel */}
+      <div style={{ marginTop: 20 }}>
+        <p style={{ fontSize: 12, color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          Additional Metrics
+        </p>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '10px 14px',
+          background: '#FFFBEB',
+          border: '1px dashed #F59E0B',
+          borderRadius: 8,
+        }}>
+          <div style={{ width: 140, fontSize: 13, fontWeight: 600, color: '#D97706' }}>
+            Future Scheduled
+          </div>
+          <div style={{ flex: 1, height: 24, background: '#FEF3C7', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{
+              width: `${Math.max((cd.futureScheduled / maxVal) * 100, cd.futureScheduled > 0 ? 3 : 0)}%`,
+              height: '100%',
+              background: '#F59E0B',
+              borderRadius: 4,
+            }} />
+          </div>
+          <div style={{
+            width: 70,
+            textAlign: 'right',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#D97706',
+          }}>
+            {cd.futureScheduled.toLocaleString()}
+          </div>
+          <div style={{ width: 52 }} />
+          <button
+            onClick={() => handleExport('Future Scheduled')}
+            style={{
+              padding: '4px 8px',
+              borderRadius: 4,
+              fontSize: 11,
+              background: '#FEF3C7',
+              border: '1px solid #F59E0B',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <FiDownload size={12} /> Export
+          </button>
+        </div>
       </div>
 
       {activeSelection && (
