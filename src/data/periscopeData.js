@@ -210,20 +210,25 @@ export function useFunnelData() {
     const trialDoneIds = new Set();
     const paymentPendingIds = new Set();
     const enrolledIds = new Set();
-    payments.filter(p => p.mode === 'GA').forEach(p => enrolledIds.add(p.prospectid));
 
+    // Count all payments as enrolled (not just mode === 'GA')
+    payments.forEach(p => { if (p.prospectid) enrolledIds.add(p.prospectid); });
+
+    // Build trial done/pending directly from trials table so enrolled leads
+    // (filtered out of `leads`) are still counted correctly
+    trialMap.forEach((t, id) => {
+      if (t.demo_state === 'DONE') {
+        trialDoneIds.add(id);
+      } else {
+        trialPendingIds.add(id);
+      }
+    });
+
+    // Payment pending: trial done, not yet paid, not already marked enrolled
     leads.forEach(l => {
       const s = l.prospectid;
-      if (!s) return;
-      const hasTrial = trialMap.has(s);
-      if (!hasTrial) return;
-      const t = trialMap.get(s);
-      if (t.demo_state !== 'DONE') {
-        trialPendingIds.add(s);
-      } else {
-        trialDoneIds.add(s);
-        if (!enrolledIds.has(s) && l.prospectstage !== 'Enrolled') paymentPendingIds.add(s);
-      }
+      if (!s || !trialDoneIds.has(s) || enrolledIds.has(s)) return;
+      if (l.prospectstage !== 'Enrolled') paymentPendingIds.add(s);
     });
 
     // Build per-channel breakdown
