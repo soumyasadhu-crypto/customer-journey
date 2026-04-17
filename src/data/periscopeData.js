@@ -5,13 +5,33 @@ const TRIALS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/683ebbd2
 const PAYMENTS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/2a1f418e-b45c-b488-406a-2b4c5fad1032';
 const REFUNDS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/840e58d1-be86-c768-6244-ab30d1157395';
 const REFERRALS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/b8f41fdc-31ab-2529-39ef-c68fb004d949';
+const CAMPAIGNS_URL = 'https://docs.google.com/spreadsheets/d/109x2JRONU1nyVJ-p_oCVHtQ76zDNM3phGtDv9QNo-hM/export?format=csv&gid=0';
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
 
 function parseCSV(csvText) {
   const lines = csvText.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
+  const headers = parseCSVLine(lines[0]).map(h => h.trim());
   const data = [];
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',');
+    const values = parseCSVLine(lines[i]);
     if (values.length >= 2) {
       const row = {};
       headers.forEach((h, idx) => { row[h] = values[idx]?.trim() || ''; });
@@ -21,15 +41,19 @@ function parseCSV(csvText) {
   return data;
 }
 
+function getCampaignLabel(row) {
+  return row['Final Campaign Category'] || row['Campaign Category'] || row['mx_utm_campaign'] || '';
+}
+
 export function useFunnelData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [rawData, setRawData] = useState({ leads: [], trials: [], payments: [], refunds: [], referrals: [] });
+  const [rawData, setRawData] = useState({ leads: [], trials: [], payments: [], refunds: [], referrals: [], campaigns: [] });
   const [funnelData, setFunnelData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [availableMonths, setAvailableMonths] = useState([]);
   const [availableBuckets, setAvailableBuckets] = useState([]);
-  
+
   const [month, setMonth] = useState('all');
   const [region, setRegion] = useState('all');
   const [countryBuckets, setCountryBuckets] = useState([]);
@@ -39,9 +63,9 @@ export function useFunnelData() {
       try {
         setLoading(true);
         setError(null);
-        
-        const urls = [LEADS_URL, TRIALS_URL, PAYMENTS_URL, REFUNDS_URL, REFERRALS_URL];
-        
+
+        const urls = [LEADS_URL, TRIALS_URL, PAYMENTS_URL, REFUNDS_URL, REFERRALS_URL, CAMPAIGNS_URL];
+
         const responses = [];
         for (const url of urls) {
           console.log('Fetching:', url);
@@ -54,7 +78,7 @@ export function useFunnelData() {
             responses.push({ ok: false, text: () => '' });
           }
         }
-        
+
         const texts = [];
         for (const r of responses) {
           try {
@@ -63,30 +87,28 @@ export function useFunnelData() {
             texts.push('');
           }
         }
-        
-        console.log('Parsed:', texts[0]?.substring(0, 100));
-        
+
         const leads = parseCSV(texts[0] || '');
         const trials = parseCSV(texts[1] || '');
         const payments = parseCSV(texts[2] || '');
         const refunds = parseCSV(texts[3] || '');
         const referrals = parseCSV(texts[4] || '');
-        
-        // Use mock data if no data
+        const campaigns = parseCSV(texts[5] || '');
+
         const hasData = leads.length > 0 || trials.length > 0 || payments.length > 0;
-        
+
         if (!hasData) {
           console.log('Using fallback mock data');
           const mockLeads = [
-            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Google', country_bucket: 'India', student_id: '1', region: 'India', lead_created_date: '2026-03-01' },
-            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Facebook', country_bucket: 'India', student_id: '2', region: 'India', lead_created_date: '2026-03-02' },
-            { lead_created_month: '2026-03', prospectstage: 'Demo Done', channel: 'Google', country_bucket: 'India', student_id: '3', region: 'India', lead_created_date: '2026-03-03' }
+            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Google', country_bucket: 'India', prospectid: '1', region: 'India', lead_created_date: '2026-03-01' },
+            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Facebook', country_bucket: 'India', prospectid: '2', region: 'India', lead_created_date: '2026-03-02' },
+            { lead_created_month: '2026-03', prospectstage: 'Demo Done', channel: 'Google', country_bucket: 'India', prospectid: '3', region: 'India', lead_created_date: '2026-03-03' }
           ];
           const mockTrials = [
-            { student_id: '3', demo_state: 'DONE', channel: 'Google', lead_created_month: '2026-03', region: 'India' }
+            { prospectid: '3', demo_state: 'DONE', channel: 'Google', lead_created_month: '2026-03', region: 'India' }
           ];
           const mockPayments = [
-            { student_id: '3', mode: 'GA', lead_created_month: '2026-03', region: 'India' }
+            { prospectid: '3', mode: 'GA', lead_created_month: '2026-03', region: 'India' }
           ];
           const mockRefunds = [
             { refund_reason: 'Quality Issue', refund_amount: '5000' },
@@ -97,16 +119,21 @@ export function useFunnelData() {
             { channel: 'Facebook', status: 'Pending' },
             { channel: 'Referral', status: 'Accepted' }
           ];
-          setRawData({ leads: mockLeads, trials: mockTrials, payments: mockPayments, refunds: mockRefunds, referrals: mockReferrals });
+          const mockCampaigns = [
+            { prospectid: '1', mx_utm_campaign: 'Brand_Search', 'Campaign Category': 'Brand', 'Final Campaign Category': 'Brand' },
+            { prospectid: '2', mx_utm_campaign: 'Performance_Max', 'Campaign Category': 'Performance', 'Final Campaign Category': 'Performance Max' },
+            { prospectid: '3', mx_utm_campaign: 'Brand_Search', 'Campaign Category': 'Brand', 'Final Campaign Category': 'Brand' },
+          ];
+          setRawData({ leads: mockLeads, trials: mockTrials, payments: mockPayments, refunds: mockRefunds, referrals: mockReferrals, campaigns: mockCampaigns });
           setAvailableMonths(['2026-03']);
           setAvailableBuckets(['India']);
           setLoading(false);
           return;
         }
-        
+
         setAvailableMonths([...new Set(leads.map(l => l.lead_created_month).filter(Boolean))].sort().reverse());
         setAvailableBuckets([...new Set(leads.map(l => l.country_bucket).filter(Boolean))].sort());
-        setRawData({ leads, trials, payments, refunds, referrals });
+        setRawData({ leads, trials, payments, refunds, referrals, campaigns });
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -139,29 +166,43 @@ export function useFunnelData() {
       payments = payments.filter(p => countryBuckets.includes(p.country_bucket));
     }
 
+    // Build campaign lookup: prospectid → campaign label
+    const prospectToCampaign = new Map();
+    rawData.campaigns.forEach(c => {
+      if (c.prospectid) {
+        prospectToCampaign.set(c.prospectid, getCampaignLabel(c));
+      }
+    });
+
     const channelCounts = {};
     leads.forEach(l => { channelCounts[l.channel] = (channelCounts[l.channel] || 0) + 1; });
+
+    const campaignCounts = {};
+    leads.forEach(l => {
+      const camp = prospectToCampaign.get(l.prospectid) || 'Unknown';
+      campaignCounts[camp] = (campaignCounts[camp] || 0) + 1;
+    });
 
     const trialMap = new Map();
     const trialScheduledSet = new Set();
     trials.forEach(t => {
-      if (t.student_id) {
-        trialMap.set(t.student_id, t);
-        trialScheduledSet.add(t.student_id);
+      if (t.prospectid) {
+        trialMap.set(t.prospectid, t);
+        trialScheduledSet.add(t.prospectid);
       }
     });
 
     const leadsWithTrials = new Set([...trialMap.keys()]);
-    const leadsWithoutTrials = leads.filter(l => !leadsWithTrials.has(l.student_id) && l.prospectstage !== 'Enrolled').length;
+    const leadsWithoutTrials = leads.filter(l => !leadsWithTrials.has(l.prospectid) && l.prospectstage !== 'Enrolled').length;
 
     const trialPendingIds = new Set();
     const trialDoneIds = new Set();
     const paymentPendingIds = new Set();
     const enrolledIds = new Set();
-    payments.filter(p => p.mode === 'GA').forEach(p => enrolledIds.add(p.student_id));
+    payments.filter(p => p.mode === 'GA').forEach(p => enrolledIds.add(p.prospectid));
 
     leads.forEach(l => {
-      const s = l.student_id;
+      const s = l.prospectid;
       if (!s) return;
       const hasTrial = trialMap.has(s);
       if (!hasTrial) return;
@@ -174,25 +215,22 @@ export function useFunnelData() {
       }
     });
 
+    // Build per-channel breakdown
     const channelBreakdown = {};
     Object.keys(channelCounts).forEach(ch => {
-      const chLeadIds = leads.filter(l => l.channel === ch).map(l => l.student_id);
+      const chLeadIds = leads.filter(l => l.channel === ch).map(l => l.prospectid);
       const chLeadSet = new Set(chLeadIds);
-      const chScheduled = [...chLeadSet].filter(id => trialScheduledSet.has(id)).length;
-      const chNotScheduled = [...chLeadSet].filter(id => !trialScheduledSet.has(id)).length;
-      const chTrialPending = [...chLeadSet].filter(id => trialPendingIds.has(id)).length;
-      const chTrialDone = [...chLeadSet].filter(id => trialDoneIds.has(id)).length;
-      const chPaymentPending = [...chLeadSet].filter(id => paymentPendingIds.has(id)).length;
-      const chEnrolled = [...chLeadSet].filter(id => enrolledIds.has(id)).length;
-      channelBreakdown[ch] = {
-        total: channelCounts[ch],
-        scheduled: chScheduled,
-        notScheduled: chNotScheduled,
-        trialPending: chTrialPending,
-        trialDone: chTrialDone,
-        paymentPending: chPaymentPending,
-        enrolled: chEnrolled
-      };
+      channelBreakdown[ch] = buildBreakdown(channelCounts[ch], chLeadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds);
+    });
+
+    // Build per-campaign breakdown
+    const campaignBreakdown = {};
+    Object.keys(campaignCounts).forEach(camp => {
+      const campLeadIds = leads
+        .filter(l => (prospectToCampaign.get(l.prospectid) || 'Unknown') === camp)
+        .map(l => l.prospectid);
+      const campLeadSet = new Set(campLeadIds);
+      campaignBreakdown[camp] = buildBreakdown(campaignCounts[camp], campLeadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds);
     });
 
     setFunnelData({
@@ -200,6 +238,8 @@ export function useFunnelData() {
       leadsWithoutTrials,
       channelCounts,
       channelBreakdown,
+      campaignCounts,
+      campaignBreakdown,
       trialScheduled: trialScheduledSet.size,
       trialPending: trialPendingIds.size,
       trialDone: trialDoneIds.size,
@@ -210,59 +250,42 @@ export function useFunnelData() {
     // Analytics calculations
     const refunds = rawData.refunds;
     const referrals = rawData.referrals;
-    
-    // Filter refunds by month and region
+
     let filteredRefunds = refunds;
     if (month !== 'all') {
       filteredRefunds = filteredRefunds.filter(r => r.refunded_month === month);
     }
     if (region !== 'all') {
-      // Map India -> IND, ROW -> ROW
       const regionMap = { 'India': 'IND', 'ROW': 'ROW', 'IS': 'IS' };
       const mappedRegion = regionMap[region] || region;
       filteredRefunds = filteredRefunds.filter(r => r.derived_region === mappedRegion);
     }
-    
-    // Refund metrics
+
     const totalRefunds = filteredRefunds.length;
-    const refundedAmount = filteredRefunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount_inr) || parseFloat(r.refund_amount) || 0), 0);
-    
-    // Refunds by month
     const refundsByMonth = {};
     filteredRefunds.forEach(r => {
       const m = r.refunded_month || 'Unknown';
       refundsByMonth[m] = (refundsByMonth[m] || 0) + 1;
     });
-    
-    // Refunds by region (IND, IS, ROW only)
     const refundsByRegion = {};
     filteredRefunds.forEach(r => {
       const reg = r.derived_region || 'Unknown';
       refundsByRegion[reg] = (refundsByRegion[reg] || 0) + 1;
     });
-    
-    // Refunds by classes_refunded_bucket (e.g., 0-12, 13-24, etc.)
     const refundsByClassesBucket = {};
     filteredRefunds.forEach(r => {
       const bucket = r.classes_refunded_bucket || 'Unknown';
       refundsByClassesBucket[bucket] = (refundsByClassesBucket[bucket] || 0) + 1;
     });
-    
-    // Refunds by tenure (months)
     const refundsByTenure = {};
     filteredRefunds.forEach(r => {
       const tenure = r.tenure || 'Unknown';
       refundsByTenure[tenure] = (refundsByTenure[tenure] || 0) + 1;
     });
-    
-    // Average classes completed before refund
     const totalClassesCompleted = filteredRefunds.reduce((sum, r) => sum + (parseInt(r.classes_completed) || 0), 0);
     const avgClassesCompleted = totalRefunds > 0 ? Math.round(totalClassesCompleted / totalRefunds) : 0;
-    
-    // Total refunded amount in INR
     const totalRefundedINR = filteredRefunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount_inr) || 0), 0);
-    
-    // Referral metrics
+
     const totalReferrals = referrals.length;
     const acceptedReferrals = referrals.filter(r => r.is_valid === 'true' || r.is_deleted === 'false').length;
     const pendingReferrals = referrals.filter(r => r.is_deleted !== 'true').length;
@@ -274,7 +297,7 @@ export function useFunnelData() {
 
     setAnalyticsData({
       totalRefunds,
-      refundedAmount,
+      refundedAmount: totalRefundedINR,
       refundsByReason: refundsByMonth,
       refundsByMonth,
       refundsByRegion,
@@ -290,8 +313,20 @@ export function useFunnelData() {
     });
   }, [month, region, countryBuckets, rawData]);
 
-  return { 
+  return {
     loading, error, funnelData, analyticsData, availableMonths, availableBuckets,
     month, setMonth, region, setRegion, countryBuckets, setCountryBuckets, rawData
+  };
+}
+
+function buildBreakdown(total, leadSet, trialScheduledSet, trialPendingIds, trialDoneIds, paymentPendingIds, enrolledIds) {
+  return {
+    total,
+    scheduled: [...leadSet].filter(id => trialScheduledSet.has(id)).length,
+    notScheduled: [...leadSet].filter(id => !trialScheduledSet.has(id)).length,
+    trialPending: [...leadSet].filter(id => trialPendingIds.has(id)).length,
+    trialDone: [...leadSet].filter(id => trialDoneIds.has(id)).length,
+    paymentPending: [...leadSet].filter(id => paymentPendingIds.has(id)).length,
+    enrolled: [...leadSet].filter(id => enrolledIds.has(id)).length,
   };
 }

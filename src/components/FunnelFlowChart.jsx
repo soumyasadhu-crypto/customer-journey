@@ -3,17 +3,27 @@ import { FiDownload } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 export default function FunnelFlowChart({ data, rawData }) {
+  const [viewMode, setViewMode] = useState('channel'); // 'channel' | 'campaign'
   const [selectedChannel, setSelectedChannel] = useState(null);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
   const { user } = useAuth();
 
   if (!data || !data.channelBreakdown) {
     return <div className="funnel-section">Loading...</div>;
   }
 
-  const channels = Object.keys(data.channelBreakdown) || [];
-  
-  const getChannelData = () => {
-    if (selectedChannel && data.channelBreakdown[selectedChannel]) {
+  const channels = Object.keys(data.channelBreakdown);
+  const campaigns = Object.keys(data.campaignBreakdown || {}).sort((a, b) => {
+    const aTotal = data.campaignBreakdown[a]?.total || 0;
+    const bTotal = data.campaignBreakdown[b]?.total || 0;
+    return bTotal - aTotal;
+  });
+
+  const getStageData = () => {
+    if (viewMode === 'campaign' && selectedCampaign && data.campaignBreakdown?.[selectedCampaign]) {
+      return data.campaignBreakdown[selectedCampaign];
+    }
+    if (viewMode === 'channel' && selectedChannel && data.channelBreakdown[selectedChannel]) {
       return data.channelBreakdown[selectedChannel];
     }
     return {
@@ -27,7 +37,7 @@ export default function FunnelFlowChart({ data, rawData }) {
     };
   };
 
-  const cd = getChannelData();
+  const cd = getStageData();
   const maxVal = Math.max(cd.total, 1);
 
   const stages = [
@@ -50,42 +60,52 @@ export default function FunnelFlowChart({ data, rawData }) {
       return;
     }
 
-    const trialMap = new Map();
-    (rawData.trials || []).forEach(t => { 
-      if (t.student_id) trialMap.set(t.student_id, t); 
+    const prospectToCampaign = new Map();
+    (rawData.campaigns || []).forEach(c => {
+      if (c.prospectid) {
+        const label = c['Final Campaign Category'] || c['Campaign Category'] || c['mx_utm_campaign'] || '';
+        prospectToCampaign.set(c.prospectid, label);
+      }
     });
-    const paidIds = new Set((rawData.payments || []).filter(p => p.mode === 'GA').map(p => p.student_id));
+
+    const trialMap = new Map();
+    (rawData.trials || []).forEach(t => {
+      if (t.prospectid) trialMap.set(t.prospectid, t);
+    });
+    const paidIds = new Set((rawData.payments || []).filter(p => p.mode === 'GA').map(p => p.prospectid));
 
     let leads = rawData.leads.filter(l => l.channel !== 'Organic Content');
-    if (selectedChannel) {
+
+    if (viewMode === 'channel' && selectedChannel) {
       leads = leads.filter(l => l.channel === selectedChannel);
+    } else if (viewMode === 'campaign' && selectedCampaign) {
+      leads = leads.filter(l => (prospectToCampaign.get(l.prospectid) || 'Unknown') === selectedCampaign);
     }
 
     let filteredLeads = [];
-    
     if (stageName === 'Leads') {
       filteredLeads = leads;
     } else if (stageName === 'Schedule Pending') {
-      filteredLeads = leads.filter(l => l.student_id && !trialMap.has(l.student_id) && l.prospectstage !== 'Enrolled');
+      filteredLeads = leads.filter(l => l.prospectid && !trialMap.has(l.prospectid) && l.prospectstage !== 'Enrolled');
     } else if (stageName === 'Trial Scheduled') {
-      filteredLeads = leads.filter(l => l.student_id && trialMap.has(l.student_id));
+      filteredLeads = leads.filter(l => l.prospectid && trialMap.has(l.prospectid));
     } else if (stageName === 'Trial Pending') {
       filteredLeads = leads.filter(l => {
-        const t = trialMap.get(l.student_id);
+        const t = trialMap.get(l.prospectid);
         return t && t.demo_state !== 'DONE';
       });
     } else if (stageName === 'Trial Done') {
       filteredLeads = leads.filter(l => {
-        const t = trialMap.get(l.student_id);
+        const t = trialMap.get(l.prospectid);
         return t && t.demo_state === 'DONE';
       });
     } else if (stageName === 'Payment Pending') {
       filteredLeads = leads.filter(l => {
-        const t = trialMap.get(l.student_id);
-        return t && t.demo_state === 'DONE' && !paidIds.has(l.student_id) && l.prospectstage !== 'Enrolled';
+        const t = trialMap.get(l.prospectid);
+        return t && t.demo_state === 'DONE' && !paidIds.has(l.prospectid) && l.prospectstage !== 'Enrolled';
       });
     } else if (stageName === 'Enrolled') {
-      filteredLeads = leads.filter(l => paidIds.has(l.student_id));
+      filteredLeads = leads.filter(l => paidIds.has(l.prospectid));
     }
 
     if (!filteredLeads || filteredLeads.length === 0) {
@@ -93,19 +113,25 @@ export default function FunnelFlowChart({ data, rawData }) {
       return;
     }
 
+    // Enrich export with campaign data
+    const enriched = filteredLeads.map(l => ({
+      ...l,
+      campaign: prospectToCampaign.get(l.prospectid) || '',
+    }));
+
     try {
-      const headers = Object.keys(filteredLeads[0]);
-      const rows = filteredLeads.map(row => headers.map(h => row[h]));
+      const headers = Object.keys(enriched[0]);
+      const rows = enriched.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`));
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-      
+
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const filename = selectedChannel 
-        ? `${selectedChannel}_${stageName.toLowerCase().replace(/ /g, '_')}` 
-        : stageName.toLowerCase().replace(/ /g, '_');
-      a.download = `${filename}_leads.csv`;
+      const prefix = viewMode === 'campaign'
+        ? (selectedCampaign || 'all_campaigns')
+        : (selectedChannel || 'all_channels');
+      a.download = `${prefix}_${stageName.toLowerCase().replace(/ /g, '_')}_leads.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -113,39 +139,92 @@ export default function FunnelFlowChart({ data, rawData }) {
     }
   };
 
+  const activeSelection = viewMode === 'channel' ? selectedChannel : selectedCampaign;
+  const setActiveSelection = viewMode === 'channel' ? setSelectedChannel : setSelectedCampaign;
+
   return (
     <div className="funnel-section">
       <h3 className="section-title">Customer Journey Flow</h3>
-      
+
+      {/* View mode toggle */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <button
+          onClick={() => { setViewMode('channel'); setSelectedCampaign(null); }}
+          style={{
+            padding: '7px 16px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            background: viewMode === 'channel' ? '#0F172A' : '#fff',
+            color: viewMode === 'channel' ? '#fff' : '#64748B',
+            border: '1px solid #E2E8F0',
+            cursor: 'pointer',
+          }}
+        >
+          By Channel
+        </button>
+        <button
+          onClick={() => { setViewMode('campaign'); setSelectedChannel(null); }}
+          style={{
+            padding: '7px 16px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 600,
+            background: viewMode === 'campaign' ? '#0F172A' : '#fff',
+            color: viewMode === 'campaign' ? '#fff' : '#64748B',
+            border: '1px solid #E2E8F0',
+            cursor: 'pointer',
+          }}
+        >
+          By Campaign
+        </button>
+      </div>
+
+      {/* Filter pills */}
       <div style={{ marginBottom: 20 }}>
-        <p style={{ fontSize: 13, color: '#64748B', marginBottom: 8 }}>Lead Source Channels:</p>
+        <p style={{ fontSize: 13, color: '#64748B', marginBottom: 8 }}>
+          {viewMode === 'channel' ? 'Lead Source Channels:' : 'Campaigns:'}
+        </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {channels.map(ch => (
-            <button
-              key={ch}
-              onClick={() => setSelectedChannel(selectedChannel === ch ? null : ch)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 6,
-                fontSize: 12,
-                background: selectedChannel === ch ? '#2563EB' : '#fff',
-                color: selectedChannel === ch ? '#fff' : '#0F172A',
-                border: '1px solid #E2E8F0',
-                cursor: 'pointer',
-              }}
-            >
-              {ch} ({data.channelBreakdown[ch]?.total || 0})
-            </button>
-          ))}
+          {(viewMode === 'channel' ? channels : campaigns).map(item => {
+            const count = viewMode === 'channel'
+              ? data.channelBreakdown[item]?.total || 0
+              : data.campaignBreakdown[item]?.total || 0;
+            return (
+              <button
+                key={item}
+                onClick={() => setActiveSelection(activeSelection === item ? null : item)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  background: activeSelection === item ? '#2563EB' : '#fff',
+                  color: activeSelection === item ? '#fff' : '#0F172A',
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer',
+                }}
+              >
+                {item} ({count.toLocaleString()})
+              </button>
+            );
+          })}
+          {viewMode === 'campaign' && campaigns.length === 0 && (
+            <span style={{ fontSize: 13, color: '#94A3B8' }}>No campaign data loaded yet</span>
+          )}
         </div>
       </div>
 
+      {/* Funnel stages */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {stages.map(stage => {
           const width = (stage.value / maxVal) * 100;
-          
+          const prevStage = stages[stages.indexOf(stage) - 1];
+          const convRate = prevStage && prevStage.value > 0
+            ? ((stage.value / prevStage.value) * 100).toFixed(1)
+            : null;
+
           return (
-            <div 
+            <div
               key={stage.id}
               style={{
                 display: 'flex',
@@ -157,12 +236,7 @@ export default function FunnelFlowChart({ data, rawData }) {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               }}
             >
-              <div style={{
-                width: 130,
-                fontSize: 13,
-                fontWeight: 600,
-                color: stage.color,
-              }}>
+              <div style={{ width: 140, fontSize: 13, fontWeight: 600, color: stage.color }}>
                 {stage.label}
               </div>
               <div style={{ flex: 1, height: 24, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
@@ -182,7 +256,19 @@ export default function FunnelFlowChart({ data, rawData }) {
               }}>
                 {stage.value.toLocaleString()}
               </div>
-              <button 
+              {convRate !== null && (
+                <div style={{
+                  width: 52,
+                  textAlign: 'right',
+                  fontSize: 11,
+                  color: '#64748B',
+                  fontFamily: 'JetBrains Mono, monospace',
+                }}>
+                  {convRate}%
+                </div>
+              )}
+              {convRate === null && <div style={{ width: 52 }} />}
+              <button
                 onClick={() => handleExport(stage.key)}
                 style={{
                   padding: '4px 8px',
@@ -203,7 +289,7 @@ export default function FunnelFlowChart({ data, rawData }) {
         })}
       </div>
 
-      {selectedChannel && (
+      {activeSelection && (
         <div style={{
           marginTop: 16,
           padding: 12,
@@ -213,7 +299,7 @@ export default function FunnelFlowChart({ data, rawData }) {
           color: '#2563EB',
           fontWeight: 500,
         }}>
-          Showing data for: {selectedChannel}
+          Showing: {viewMode === 'channel' ? 'Channel' : 'Campaign'} — {activeSelection}
         </div>
       )}
     </div>

@@ -35,37 +35,37 @@ export default function DataTable({ data, rawData, onStageClick }) {
     
     const trialMap = new Map();
     rawData.trials?.forEach(t => {
-      if (t.student_id) trialMap.set(t.student_id, t);
+      if (t.prospectid) trialMap.set(t.prospectid, t);
     });
-    const paidIds = new Set(rawData.payments?.map(p => p.student_id).filter(Boolean) || []);
+    const paidIds = new Set(rawData.payments?.map(p => p.prospectid).filter(Boolean) || []);
 
     let filteredLeads = [];
     
     if (stageName === 'Leads') {
       filteredLeads = rawData.leads;
     } else if (stageName === 'Schedule Pending') {
-      filteredLeads = rawData.leads.filter(l => l.student_id && !trialMap.has(l.student_id));
+      filteredLeads = rawData.leads.filter(l => l.prospectid && !trialMap.has(l.prospectid));
     } else if (stageName === 'Trial Scheduled') {
-      filteredLeads = rawData.leads.filter(l => l.student_id && trialMap.has(l.student_id));
+      filteredLeads = rawData.leads.filter(l => l.prospectid && trialMap.has(l.prospectid));
     } else if (stageName === 'Trial Pending') {
       filteredLeads = rawData.leads.filter(l => {
-        const trial = trialMap.get(l.student_id);
+        const trial = trialMap.get(l.prospectid);
         return trial && trial.demo_state !== 'DONE';
       });
     } else if (stageName === 'Trial Done') {
       filteredLeads = rawData.leads.filter(l => {
-        const trial = trialMap.get(l.student_id);
+        const trial = trialMap.get(l.prospectid);
         return trial && trial.demo_state === 'DONE';
       });
     } else if (stageName === 'Payment Pending') {
       filteredLeads = rawData.leads.filter(l => {
-        const trial = trialMap.get(l.student_id);
-        return trial && trial.demo_state === 'DONE' && !paidIds.has(l.student_id);
+        const trial = trialMap.get(l.prospectid);
+        return trial && trial.demo_state === 'DONE' && !paidIds.has(l.prospectid);
       });
     } else if (stageName === 'Enrolled') {
       filteredLeads = rawData.leads.filter(l => {
-        const trial = trialMap.get(l.student_id);
-        return trial && trial.demo_state === 'DONE' && paidIds.has(l.student_id);
+        const trial = trialMap.get(l.prospectid);
+        return trial && trial.demo_state === 'DONE' && paidIds.has(l.prospectid);
       });
     }
 
