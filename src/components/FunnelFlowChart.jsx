@@ -136,67 +136,97 @@ export default function FunnelFlowChart({ data, rawData }) {
       }
     });
 
-    const trialMap = new Map();
+    // Multi-trial support: group trials by prospectid
+    const trialsByProspect = new Map();
+    const trialScheduledSet = new Set();
     (rawData.trials || []).forEach(t => {
-      if (t.prospectid) trialMap.set(t.prospectid, t);
+      if (!t.prospectid || t.demo_state === 'Future Scheduled') return;
+      trialScheduledSet.add(t.prospectid);
+      if (!trialsByProspect.has(t.prospectid)) trialsByProspect.set(t.prospectid, []);
+      trialsByProspect.get(t.prospectid).push(t);
     });
-    const paidIds = new Set((rawData.payments || []).filter(p => p.mode === 'GA').map(p => p.prospectid));
 
+    const trialDoneProspects = new Set();
+    const trialPendingProspects = new Set();
+    trialsByProspect.forEach((list, id) => {
+      if (list.some(t => t.demo_state === 'DONE')) trialDoneProspects.add(id);
+      else trialPendingProspects.add(id);
+    });
+
+    const paidIds = new Set((rawData.payments || []).map(p => p.prospectid).filter(Boolean));
+
+    // Apply channel/campaign filter to leads
     let leads = rawData.leads.filter(l => l.channel !== 'Organic Content');
-
     if (viewMode === 'channel' && selectedChannel) {
       leads = leads.filter(l => l.channel === selectedChannel);
     } else if (viewMode === 'campaign' && selectedCampaign) {
       leads = leads.filter(l => prospectToCampaign.get(l.prospectid) === selectedCampaign);
     }
+    const leadIds = new Set(leads.map(l => l.prospectid).filter(Boolean));
 
-    let filteredLeads = [];
+    let exportRows = [];
+
     if (stageName === 'Leads') {
-      filteredLeads = leads;
+      // Lead dump enriched with campaign
+      exportRows = leads.map(l => ({ ...l, campaign: prospectToCampaign.get(l.prospectid) || '' }));
+
     } else if (stageName === 'Schedule Pending') {
-      filteredLeads = leads.filter(l => l.prospectid && !trialMap.has(l.prospectid) && l.prospectstage !== 'Enrolled');
+      // Leads NOT in trials table at all, NOT paid
+      exportRows = leads
+        .filter(l => l.prospectid && !trialScheduledSet.has(l.prospectid) && !paidIds.has(l.prospectid))
+        .map(l => ({ ...l, campaign: prospectToCampaign.get(l.prospectid) || '' }));
+
     } else if (stageName === 'Trial Scheduled') {
-      filteredLeads = leads.filter(l => l.prospectid && trialMap.has(l.prospectid));
+      // Lead dump for all leads that have a trial record
+      exportRows = leads
+        .filter(l => l.prospectid && trialScheduledSet.has(l.prospectid))
+        .map(l => ({ ...l, campaign: prospectToCampaign.get(l.prospectid) || '' }));
+
     } else if (stageName === 'Trial Pending') {
-      filteredLeads = leads.filter(l => {
-        const t = trialMap.get(l.prospectid);
-        return t && t.demo_state !== 'DONE';
-      });
-    } else if (stageName === 'Trial Done') {
-      filteredLeads = leads.filter(l => {
-        const t = trialMap.get(l.prospectid);
-        return t && t.demo_state === 'DONE';
-      });
-    } else if (stageName === 'Payment Pending') {
-      filteredLeads = leads.filter(l => {
-        const t = trialMap.get(l.prospectid);
-        return t && t.demo_state === 'DONE' && !paidIds.has(l.prospectid) && l.prospectstage !== 'Enrolled';
-      });
-    } else if (stageName === 'Enrolled') {
-      filteredLeads = leads.filter(l => paidIds.has(l.prospectid));
-    } else if (stageName === 'Future Scheduled') {
-      const futureIds = new Set(
-        (rawData.trials || [])
-          .filter(t => t.demo_state === 'Future Scheduled' && t.prospectid)
-          .map(t => t.prospectid)
+      // Trial dump: all trial records for prospects with NO DONE trial, scoped to filtered leads
+      exportRows = (rawData.trials || []).filter(t =>
+        t.prospectid &&
+        leadIds.has(t.prospectid) &&
+        trialPendingProspects.has(t.prospectid) &&
+        t.demo_state !== 'Future Scheduled'
       );
-      filteredLeads = leads.filter(l => futureIds.has(l.prospectid));
+
+    } else if (stageName === 'Trial Done') {
+      // Trial dump: DONE trial records for filtered leads
+      exportRows = (rawData.trials || []).filter(t =>
+        t.prospectid && leadIds.has(t.prospectid) && t.demo_state === 'DONE'
+      );
+
+    } else if (stageName === 'Payment Pending') {
+      // Trial dump: DONE trial records for prospects with no payment, scoped to filtered leads
+      exportRows = (rawData.trials || []).filter(t =>
+        t.prospectid &&
+        leadIds.has(t.prospectid) &&
+        t.demo_state === 'DONE' &&
+        !paidIds.has(t.prospectid)
+      );
+
+    } else if (stageName === 'Enrolled') {
+      // Payment dump: payment records for filtered leads
+      exportRows = (rawData.payments || []).filter(p =>
+        p.prospectid && leadIds.has(p.prospectid)
+      );
+
+    } else if (stageName === 'Future Scheduled') {
+      // Trial dump: future scheduled trial records for filtered leads
+      exportRows = (rawData.trials || []).filter(t =>
+        t.prospectid && leadIds.has(t.prospectid) && t.demo_state === 'Future Scheduled'
+      );
     }
 
-    if (!filteredLeads || filteredLeads.length === 0) {
-      alert(`No leads for ${stageName}`);
+    if (!exportRows || exportRows.length === 0) {
+      alert(`No data for ${stageName}`);
       return;
     }
 
-    // Enrich export with campaign data
-    const enriched = filteredLeads.map(l => ({
-      ...l,
-      campaign: prospectToCampaign.get(l.prospectid) || '',
-    }));
-
     try {
-      const headers = Object.keys(enriched[0]);
-      const rows = enriched.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`));
+      const headers = Object.keys(exportRows[0]);
+      const rows = exportRows.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`));
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
 
       const blob = new Blob([csv], { type: 'text/csv' });
@@ -206,7 +236,7 @@ export default function FunnelFlowChart({ data, rawData }) {
       const prefix = viewMode === 'campaign'
         ? (selectedCampaign || 'all_campaigns')
         : (selectedChannel || 'all_channels');
-      a.download = `${prefix}_${stageName.toLowerCase().replace(/ /g, '_')}_leads.csv`;
+      a.download = `${prefix}_${stageName.toLowerCase().replace(/ /g, '_')}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

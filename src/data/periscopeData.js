@@ -186,28 +186,27 @@ export function useFunnelData() {
       campaignCounts[camp] = (campaignCounts[camp] || 0) + 1;
     });
 
-    const trialMap = new Map();
+    // Group all trial records per prospect (a prospect can have multiple trials)
+    const trialsByProspect = new Map(); // prospectid → [trial, ...]
     const trialScheduledSet = new Set();
     const futureScheduledIds = new Set();
     trials.forEach(t => {
-      if (t.prospectid) {
-        if (t.demo_state === 'Future Scheduled') {
-          futureScheduledIds.add(t.prospectid);
-        } else {
-          trialMap.set(t.prospectid, t);
-          trialScheduledSet.add(t.prospectid);
-        }
+      if (!t.prospectid) return;
+      if (t.demo_state === 'Future Scheduled') {
+        futureScheduledIds.add(t.prospectid);
+        return;
       }
+      trialScheduledSet.add(t.prospectid);
+      if (!trialsByProspect.has(t.prospectid)) trialsByProspect.set(t.prospectid, []);
+      trialsByProspect.get(t.prospectid).push(t);
     });
-
-    const leadsWithTrials = new Set([...trialMap.keys()]);
 
     const enrolledIds = new Set();
     payments.forEach(p => { if (p.prospectid) enrolledIds.add(p.prospectid); });
 
-    // Schedule Pending: lead created, trial NOT scheduled (and not enrolled)
+    // Schedule Pending: in leads table, NOT in trials table at all, NOT enrolled
     const leadsWithoutTrials = leads.filter(l =>
-      !leadsWithTrials.has(l.prospectid) &&
+      !trialScheduledSet.has(l.prospectid) &&
       !futureScheduledIds.has(l.prospectid) &&
       !enrolledIds.has(l.prospectid)
     ).length;
@@ -216,20 +215,19 @@ export function useFunnelData() {
     const trialDoneIds = new Set();
     const paymentPendingIds = new Set();
 
-    // Trial Pending / Trial Done: built directly from trials table
-    trialMap.forEach((t, id) => {
-      if (t.demo_state === 'DONE') {
+    // Trial Done: prospect has at least one DONE trial
+    // Trial Pending: prospect has trial(s) but none are DONE
+    trialsByProspect.forEach((trialList, id) => {
+      if (trialList.some(t => t.demo_state === 'DONE')) {
         trialDoneIds.add(id);
       } else {
         trialPendingIds.add(id);
       }
     });
 
-    // Payment Pending: trial done, payment NOT made
-    leads.forEach(l => {
-      const s = l.prospectid;
-      if (!s || !trialDoneIds.has(s) || enrolledIds.has(s)) return;
-      paymentPendingIds.add(s);
+    // Payment Pending: trial DONE, no payment record
+    trialDoneIds.forEach(id => {
+      if (!enrolledIds.has(id)) paymentPendingIds.add(id);
     });
 
     // Build per-channel breakdown
