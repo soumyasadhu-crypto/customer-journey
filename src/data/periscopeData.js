@@ -280,13 +280,14 @@ export function useFunnelData() {
     const avgClassesCompleted = totalRefunds > 0 ? Math.round(totalClassesCompleted / totalRefunds) : 0;
     const totalRefundedINR = filteredRefunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount_inr) || 0), 0);
 
-    const totalReferrals = referrals.length;
-    const acceptedReferrals = referrals.filter(r => r.is_valid === 'true' || r.is_deleted === 'false').length;
-    const pendingReferrals = referrals.filter(r => r.is_deleted !== 'true').length;
-    const referralsBySource = {};
-    referrals.forEach(r => {
-      const source = r.source || 'Direct';
-      referralsBySource[source] = (referralsBySource[source] || 0) + 1;
+    const filteredReferrals = referrals.filter(r => r.country_bucket === 'ME');
+    const totalReferrals = filteredReferrals.length;
+    const acceptedReferrals = filteredReferrals.filter(r => r.is_valid === 'true' || r.is_deleted === 'false').length;
+    const pendingReferrals = filteredReferrals.filter(r => r.is_deleted !== 'true').length;
+    const referralsByChannel = {};
+    filteredReferrals.forEach(r => {
+      const ch = r.channel || 'Unknown';
+      referralsByChannel[ch] = (referralsByChannel[ch] || 0) + 1;
     });
 
     setAnalyticsData({
@@ -301,7 +302,7 @@ export function useFunnelData() {
       totalReferrals,
       acceptedReferrals,
       pendingReferrals,
-      referralsByChannel: referralsBySource
+      referralsByChannel
     });
   }, [month, rawData]);
 
