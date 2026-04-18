@@ -273,38 +273,31 @@ export function useFunnelData() {
     const paymentByProspect = new Map();
     payments.forEach(p => { if (p.prospectid) paymentByProspect.set(p.prospectid, p); });
 
-    // Lead → Slot Created: lead_created_date → slot_created_date
+    // Lead → Slot Created: lead_created_date → slot_created
     const leadToSlotDays = [];
     leads.forEach(l => {
       const trial = trialByProspect.get(l.prospectid);
       if (!trial) return;
-      const d = daysBetween(l.lead_created_date, trial.slot_created_date);
+      const d = daysBetween(l.lead_created_date, trial.slot_created);
       if (d !== null) leadToSlotDays.push(d);
     });
     const avgLeadToSlotDays = leadToSlotDays.length > 0
       ? (leadToSlotDays.reduce((s, v) => s + v, 0) / leadToSlotDays.length).toFixed(1)
       : null;
 
-    // Trial Done → Payment: demo_schedule_date (DONE) → paid_on
+    // Trial Done → Payment: demo_scheduled_date (DONE) → paid_on
     const trialDoneToPaymentDays = [];
     trials.forEach(t => {
       if (t.demo_state !== 'DONE') return;
       const payment = paymentByProspect.get(t.prospectid);
       if (!payment) return;
-      const d = daysBetween(t.demo_schedule_date, payment.paid_on);
+      const d = daysBetween(t.demo_scheduled_date, payment.paid_on);
       if (d !== null) trialDoneToPaymentDays.push(d);
     });
     const avgTrialDoneToPaymentDays = trialDoneToPaymentDays.length > 0
       ? (trialDoneToPaymentDays.reduce((s, v) => s + v, 0) / trialDoneToPaymentDays.length).toFixed(1)
       : null;
 
-    console.log('[TAT] leadToSlotDays count:', leadToSlotDays.length);
-    console.log('[TAT] trialDoneToPaymentDays count:', trialDoneToPaymentDays.length);
-    console.log('[TAT] sample trial columns:', trials[0] ? Object.keys(trials[0]).join(', ') : 'none');
-    console.log('[TAT] sample payment columns:', payments[0] ? Object.keys(payments[0]).join(', ') : 'none');
-    console.log('[TAT] sample lead columns:', leads[0] ? Object.keys(leads[0]).join(', ') : 'none');
-    if (trials[0]) console.log('[TAT] sample trial values:', JSON.stringify(trials[0]));
-    if (payments[0]) console.log('[TAT] sample payment values:', JSON.stringify(payments[0]));
 
     // Analytics calculations — refunds scoped to ME
     const referrals = rawData.referrals;
