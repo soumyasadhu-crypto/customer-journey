@@ -383,7 +383,7 @@ export function useFunnelData() {
     rawActiveBase.forEach(a => {
       if (!a.to_actor_id) return;
       referralsGivenToIds.add(a.to_actor_id);
-      if ((a.actor_meta || '').includes('"referee":{"state":"STUDENT_FEE_PAID"')) {
+      if ((a.actor_meta || '').includes('{"referee":{"state":"STUDENT_FEE_PAID"')) {
         successfulReferralToIds.add(a.to_actor_id);
       }
     });
