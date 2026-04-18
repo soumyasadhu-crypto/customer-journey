@@ -7,28 +7,17 @@ import { useFunnelData } from './data/periscopeData';
 
 function Dashboard({ activeTab, setActiveTab }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { 
-    loading, error, funnelData, analyticsData, availableMonths, availableBuckets,
-    month, setMonth,
-    region, setRegion,
-    countryBuckets, setCountryBuckets,
-    rawData
-  } = useFunnelData();
+  const { loading, error, funnelData, analyticsData, availableMonths, month, setMonth, rawData } = useFunnelData();
 
   return (
     <div className="app">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="main-content">
-        <Header 
+        <Header
           onMenuClick={() => setSidebarOpen(true)}
           month={month}
           onMonthChange={setMonth}
-          region={region}
-          onRegionChange={setRegion}
-          countryBuckets={countryBuckets}
-          onCountryBucketsChange={setCountryBuckets}
           availableMonths={availableMonths}
-          availableBuckets={availableBuckets}
         />
         {loading && (
           <div className="dashboard">
@@ -60,13 +49,6 @@ function Dashboard({ activeTab, setActiveTab }) {
                 ) : (
                   <div style={{ padding: 40, textAlign: 'center' }}>
                     <p>Loading analytics data...</p>
-                    <pre style={{ textAlign: 'left', fontSize: 12 }}>
-                      {JSON.stringify({ 
-                        hasData: !!rawData?.refunds?.length, 
-                        refundsCount: rawData?.refunds?.length,
-                        referralsCount: rawData?.referrals?.length 
-                      }, null, 2)}
-                    </pre>
                   </div>
                 )}
               </div>
@@ -92,7 +74,7 @@ function Dashboard({ activeTab, setActiveTab }) {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { loading, error, funnelData, analyticsData, availableMonths, availableBuckets } = useFunnelData();
+  const { loading } = useFunnelData();
 
   if (loading) {
     return (

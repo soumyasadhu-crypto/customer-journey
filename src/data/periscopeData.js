@@ -52,11 +52,7 @@ export function useFunnelData() {
   const [funnelData, setFunnelData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [availableMonths, setAvailableMonths] = useState([]);
-  const [availableBuckets, setAvailableBuckets] = useState([]);
-
   const [month, setMonth] = useState('all');
-  const [region, setRegion] = useState('all');
-  const [countryBuckets, setCountryBuckets] = useState([]);
 
   useEffect(() => {
     async function fetchAllData() {
@@ -132,7 +128,6 @@ export function useFunnelData() {
         }
 
         setAvailableMonths([...new Set(leads.map(l => l.lead_created_month).filter(Boolean))].sort().reverse());
-        setAvailableBuckets([...new Set(leads.map(l => l.country_bucket).filter(Boolean))].sort());
         setRawData({ leads, trials, payments, refunds, referrals, campaigns });
         setLoading(false);
       } catch (err) {
@@ -146,26 +141,15 @@ export function useFunnelData() {
   useEffect(() => {
     if (!rawData.leads.length) return;
 
-    // Keep enrolled leads in the set — they contribute to totals and breakdowns.
-    // Pending stages exclude them explicitly via enrolledIds checks below.
-    let leads = rawData.leads.filter(l => l.channel !== 'Organic Content');
-    let trials = rawData.trials.filter(t => t.channel !== 'Organic Content');
-    let payments = rawData.payments;
+    // Hardcoded to Middle East (ME) country bucket only
+    let leads = rawData.leads.filter(l => l.channel !== 'Organic Content' && l.country_bucket === 'ME');
+    let trials = rawData.trials.filter(t => t.channel !== 'Organic Content' && t.country_bucket === 'ME');
+    let payments = rawData.payments.filter(p => p.country_bucket === 'ME');
 
     if (month !== 'all') {
       leads = leads.filter(l => l.lead_created_month === month);
       trials = trials.filter(t => t.lead_created_month === month);
       payments = payments.filter(p => p.lead_created_month === month);
-    }
-    if (region !== 'all') {
-      leads = leads.filter(l => l.region === region);
-      trials = trials.filter(t => t.region === region);
-      payments = payments.filter(p => p.region === region);
-    }
-    if (countryBuckets.length > 0) {
-      leads = leads.filter(l => countryBuckets.includes(l.country_bucket));
-      trials = trials.filter(t => countryBuckets.includes(t.country_bucket));
-      payments = payments.filter(p => countryBuckets.includes(p.country_bucket));
     }
 
     // Build campaign lookup: prospectid → campaign label
@@ -271,11 +255,6 @@ export function useFunnelData() {
     if (month !== 'all') {
       filteredRefunds = filteredRefunds.filter(r => r.refunded_month === month);
     }
-    if (region !== 'all') {
-      const regionMap = { 'India': 'IND', 'ROW': 'ROW', 'IS': 'IS' };
-      const mappedRegion = regionMap[region] || region;
-      filteredRefunds = filteredRefunds.filter(r => r.derived_region === mappedRegion);
-    }
 
     const totalRefunds = filteredRefunds.length;
     const refundsByMonth = {};
@@ -330,8 +309,8 @@ export function useFunnelData() {
   }, [month, region, countryBuckets, rawData]);
 
   return {
-    loading, error, funnelData, analyticsData, availableMonths, availableBuckets,
-    month, setMonth, region, setRegion, countryBuckets, setCountryBuckets, rawData
+    loading, error, funnelData, analyticsData, availableMonths,
+    month, setMonth, rawData
   };
 }
 
