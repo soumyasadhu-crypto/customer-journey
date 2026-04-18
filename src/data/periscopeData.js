@@ -6,6 +6,7 @@ const PAYMENTS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/2a1f41
 const REFUNDS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/840e58d1-be86-c768-6244-ab30d1157395';
 const REFERRALS_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/b8f41fdc-31ab-2529-39ef-c68fb004d949';
 const CAMPAIGNS_URL = 'https://docs.google.com/spreadsheets/d/109x2JRONU1nyVJ-p_oCVHtQ76zDNM3phGtDv9QNo-hM/export?format=csv&gid=0';
+const ACTIVE_BASE_URL = 'https://app.periscopedata.com/api/cuemath/chart/csv/577617af-768a-5191-90db-92fbabf008e4';
 
 function parseCSVLine(line) {
   const result = [];
@@ -48,7 +49,7 @@ function getCampaignLabel(row) {
 export function useFunnelData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [rawData, setRawData] = useState({ leads: [], trials: [], payments: [], refunds: [], referrals: [], campaigns: [] });
+  const [rawData, setRawData] = useState({ leads: [], trials: [], payments: [], refunds: [], referrals: [], campaigns: [], activeBase: [] });
   const [funnelData, setFunnelData] = useState(null);
   const [analyticsData, setAnalyticsData] = useState(null);
   const [availableMonths, setAvailableMonths] = useState([]);
@@ -60,7 +61,7 @@ export function useFunnelData() {
         setLoading(true);
         setError(null);
 
-        const urls = [LEADS_URL, TRIALS_URL, PAYMENTS_URL, REFUNDS_URL, REFERRALS_URL, CAMPAIGNS_URL];
+        const urls = [LEADS_URL, TRIALS_URL, PAYMENTS_URL, REFUNDS_URL, REFERRALS_URL, CAMPAIGNS_URL, ACTIVE_BASE_URL];
 
         const responses = [];
         for (const url of urls) {
@@ -90,6 +91,7 @@ export function useFunnelData() {
         const refunds = parseCSV(texts[3] || '');
         const referrals = parseCSV(texts[4] || '');
         const campaigns = parseCSV(texts[5] || '');
+        const activeBase = parseCSV(texts[6] || '');
 
         const hasData = leads.length > 0 || trials.length > 0 || payments.length > 0;
 
@@ -120,7 +122,7 @@ export function useFunnelData() {
             { prospectid: '2', mx_utm_campaign: 'Performance_Max', 'Campaign Category': 'Performance', 'Final Campaign Category': 'Performance Max' },
             { prospectid: '3', mx_utm_campaign: 'Brand_Search', 'Campaign Category': 'Brand', 'Final Campaign Category': 'Brand' },
           ];
-          setRawData({ leads: mockLeads, trials: mockTrials, payments: mockPayments, refunds: mockRefunds, referrals: mockReferrals, campaigns: mockCampaigns });
+          setRawData({ leads: mockLeads, trials: mockTrials, payments: mockPayments, refunds: mockRefunds, referrals: mockReferrals, campaigns: mockCampaigns, activeBase: [] });
           setAvailableMonths(['2026-03']);
           setAvailableBuckets(['India']);
           setLoading(false);
@@ -128,7 +130,7 @@ export function useFunnelData() {
         }
 
         setAvailableMonths([...new Set(leads.map(l => l.lead_created_month).filter(Boolean))].sort().reverse());
-        setRawData({ leads, trials, payments, refunds, referrals, campaigns });
+        setRawData({ leads, trials, payments, refunds, referrals, campaigns, activeBase });
         setLoading(false);
       } catch (err) {
         setError(err.message);
@@ -349,6 +351,44 @@ export function useFunnelData() {
       referralsByMonth[m] = (referralsByMonth[m] || 0) + 1;
     });
 
+    // Active Base analytics
+    const activeBase = rawData.activeBase || [];
+    const today = new Date();
+
+    let totalLeadAgeDays = 0;
+    let leadsWithValidDate = 0;
+    let leadsAgeFourPlus = 0;
+
+    activeBase.forEach(a => {
+      const raw = a.lead_created_date || a.created_date || '';
+      if (!raw.trim()) { leadsAgeFourPlus++; return; }
+      const d = new Date(raw.trim().replace(' ', 'T'));
+      if (isNaN(d.getTime())) { leadsAgeFourPlus++; return; }
+      const ageDays = Math.round((today - d) / 86400000);
+      if (ageDays > 1460) { leadsAgeFourPlus++; return; }
+      totalLeadAgeDays += ageDays;
+      leadsWithValidDate++;
+    });
+    const avgLeadAgeDays = leadsWithValidDate > 0 ? Math.round(totalLeadAgeDays / leadsWithValidDate) : null;
+
+    // Referrals from active base: join on parent_service_id = from_actor_id
+    const activeBaseParentIds = new Set(activeBase.map(a => a.parent_service_id).filter(Boolean));
+    const activeBaseReferrals = rawData.referrals.filter(r => activeBaseParentIds.has(r.from_actor_id));
+    const activeReferralsGiven = activeBaseReferrals.length;
+    const activeSuccessfulReferrals = activeBaseReferrals.filter(r => (r.actor_meta || '').includes('STUDENT_FEE_PAID')).length;
+
+    const countBy = (arr, key) => {
+      const out = {};
+      arr.forEach(a => { const v = a[key] || 'Unknown'; out[v] = (out[v] || 0) + 1; });
+      return out;
+    };
+
+    const activeBaseByProduct      = countBy(activeBase, 'last_product');
+    const activeBaseByBalanceBucket = countBy(activeBase, 'class_balance_bucket');
+    const activeBaseByDuration     = countBy(activeBase, 'last_duration');
+    const activeBaseByClassPerWeek  = countBy(activeBase, 'class_per_week');
+    const activeBaseByGrade        = countBy(activeBase, 'grade');
+
     setAnalyticsData({
       totalRefunds,
       refundedAmount: totalRefundedINR,
@@ -365,7 +405,18 @@ export function useFunnelData() {
       avgLeadToSlotDays,
       leadToSlotCount: leadToSlotDays.length,
       avgTrialDoneToPaymentDays,
-      trialDoneToPaymentCount: trialDoneToPaymentDays.length
+      trialDoneToPaymentCount: trialDoneToPaymentDays.length,
+      activeBaseTotal: activeBase.length,
+      avgLeadAgeDays,
+      leadsWithValidDate,
+      leadsAgeFourPlus,
+      activeReferralsGiven,
+      activeSuccessfulReferrals,
+      activeBaseByProduct,
+      activeBaseByBalanceBucket,
+      activeBaseByDuration,
+      activeBaseByClassPerWeek,
+      activeBaseByGrade
     });
   }, [month, rawData]);
 

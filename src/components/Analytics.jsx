@@ -57,7 +57,18 @@ export default function Analytics({ data }) {
     avgLeadToSlotDays,
     leadToSlotCount,
     avgTrialDoneToPaymentDays,
-    trialDoneToPaymentCount
+    trialDoneToPaymentCount,
+    activeBaseTotal,
+    avgLeadAgeDays,
+    leadsWithValidDate,
+    leadsAgeFourPlus,
+    activeReferralsGiven,
+    activeSuccessfulReferrals,
+    activeBaseByProduct,
+    activeBaseByBalanceBucket,
+    activeBaseByDuration,
+    activeBaseByClassPerWeek,
+    activeBaseByGrade
   } = data;
 
   const referralRate = totalReferrals > 0 ? ((successfulReferrals / totalReferrals) * 100).toFixed(1) : 0;
@@ -113,6 +124,21 @@ export default function Analytics({ data }) {
           }}
         >
           TAT Analysis
+        </button>
+        <button
+          onClick={() => setActiveSection('activebase')}
+          style={{
+            padding: '10px 20px',
+            background: activeSection === 'activebase' ? '#2563EB' : '#fff',
+            color: activeSection === 'activebase' ? '#fff' : '#0F172A',
+            border: '1px solid #E2E8F0',
+            borderRadius: 6,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer'
+          }}
+        >
+          Active Base
         </button>
       </div>
 
@@ -191,6 +217,59 @@ export default function Analytics({ data }) {
           <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Referrals by Channel</h4>
             {renderBarChart(referralsByChannel, totalReferrals, '#10B981')}
+          </div>
+        </div>
+      )}
+
+      {activeSection === 'activebase' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Summary cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Total Active Base</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#2563EB' }}>{formatNumber(activeBaseTotal)}</p>
+            </div>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Avg Lead Age</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#2563EB' }}>
+                {avgLeadAgeDays !== null ? avgLeadAgeDays + ' days' : '—'}
+              </p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                {leadsAgeFourPlus > 0 ? `${formatNumber(leadsAgeFourPlus)} leads are 4+ years old or date missing` : ''}
+              </p>
+            </div>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Referrals Given</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{formatNumber(activeReferralsGiven)}</p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                {formatNumber(activeSuccessfulReferrals)} successful ({activeReferralsGiven > 0 ? ((activeSuccessfulReferrals / activeReferralsGiven) * 100).toFixed(1) : 0}%)
+              </p>
+            </div>
+          </div>
+
+          {/* Breakdowns */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Last Product</h4>
+              {renderBarChart(activeBaseByProduct, activeBaseTotal, '#2563EB')}
+            </div>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Class Balance Bucket</h4>
+              {renderBarChart(activeBaseByBalanceBucket, activeBaseTotal, '#7C3AED')}
+            </div>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Last Duration</h4>
+              {renderBarChart(activeBaseByDuration, activeBaseTotal, '#059669')}
+            </div>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Classes Per Week</h4>
+              {renderBarChart(activeBaseByClassPerWeek, activeBaseTotal, '#EA580C')}
+            </div>
+          </div>
+
+          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Grade</h4>
+            {renderBarChart(activeBaseByGrade, activeBaseTotal, '#F59E0B')}
           </div>
         </div>
       )}
