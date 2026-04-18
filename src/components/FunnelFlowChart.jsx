@@ -95,13 +95,13 @@ export default function FunnelFlowChart({ data, rawData }) {
   const maxVal = Math.max(cd.total, 1);
 
   const stages = [
-    { id: 'all', label: 'Total Leads', value: cd.total, color: '#3B82F6', key: 'Leads' },
-    { id: 'notScheduled', label: 'Schedule Pending', value: cd.notScheduled, color: '#8B5CF6', key: 'Schedule Pending' },
-    { id: 'scheduled', label: 'Trial Scheduled', value: cd.scheduled, color: '#6366F1', key: 'Trial Scheduled' },
-    { id: 'trialPending', label: 'Trial Pending', value: cd.trialPending, color: '#EC4899', key: 'Trial Pending' },
-    { id: 'trialDone', label: 'Trial Done', value: cd.trialDone, color: '#F59E0B', key: 'Trial Done' },
-    { id: 'paymentPending', label: 'Payment Pending', value: cd.paymentPending, color: '#EF4444', key: 'Payment Pending' },
-    { id: 'enrolled', label: 'Enrolled', value: cd.enrolled, color: '#10B981', key: 'Enrolled' },
+    { id: 'all',            label: 'Total Leads',      value: cd.total,          color: '#3B82F6', key: 'Leads' },
+    { id: 'notScheduled',   label: 'Schedule Pending', value: cd.notScheduled,   color: '#8B5CF6', key: 'Schedule Pending' },
+    { id: 'scheduled',      label: 'Trial Scheduled',  value: cd.scheduled,      color: '#6366F1', key: 'Trial Scheduled',  rateLabel: 'vs Leads',            denominator: cd.total },
+    { id: 'trialPending',   label: 'Trial Pending',    value: cd.trialPending,   color: '#EC4899', key: 'Trial Pending' },
+    { id: 'trialDone',      label: 'Trial Done',       value: cd.trialDone,      color: '#F59E0B', key: 'Trial Done',       rateLabel: 'vs Trial Scheduled',  denominator: cd.scheduled },
+    { id: 'paymentPending', label: 'Payment Pending',  value: cd.paymentPending, color: '#EF4444', key: 'Payment Pending' },
+    { id: 'enrolled',       label: 'Enrolled',         value: cd.enrolled,       color: '#10B981', key: 'Enrolled',         rateLabel: 'vs Trial Done',       denominator: cd.trialDone },
   ];
 
   const handleExport = (stageName) => {
@@ -329,9 +329,8 @@ export default function FunnelFlowChart({ data, rawData }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {stages.map(stage => {
           const width = (stage.value / maxVal) * 100;
-          const prevStage = stages[stages.indexOf(stage) - 1];
-          const convRate = prevStage && prevStage.value > 0
-            ? ((stage.value / prevStage.value) * 100).toFixed(1)
+          const convRate = stage.denominator > 0
+            ? ((stage.value / stage.denominator) * 100).toFixed(1)
             : null;
 
           return (
@@ -367,18 +366,21 @@ export default function FunnelFlowChart({ data, rawData }) {
               }}>
                 {stage.value.toLocaleString()}
               </div>
-              {convRate !== null && (
-                <div style={{
-                  width: 52,
-                  textAlign: 'right',
-                  fontSize: 11,
-                  color: '#64748B',
-                  fontFamily: 'JetBrains Mono, monospace',
-                }}>
+              {convRate !== null ? (
+                <div
+                  title={stage.rateLabel}
+                  style={{
+                    width: 52,
+                    textAlign: 'right',
+                    fontSize: 11,
+                    color: '#64748B',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    cursor: 'default',
+                  }}
+                >
                   {convRate}%
                 </div>
-              )}
-              {convRate === null && <div style={{ width: 52 }} />}
+              ) : <div style={{ width: 52 }} />}
               <button
                 onClick={() => handleExport(stage.key)}
                 style={{
