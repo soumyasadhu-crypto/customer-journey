@@ -298,13 +298,13 @@ export function useFunnelData() {
       ? (trialDoneToPaymentDays.reduce((s, v) => s + v, 0) / trialDoneToPaymentDays.length).toFixed(1)
       : null;
 
-    console.log('[TAT]', {
-      leads: leads.length, trials: trials.length, payments: payments.length,
-      trialMapSize: trialByProspect.size, paymentMapSize: paymentByProspect.size,
-      leadToSlotDays: leadToSlotDays.length, trialDoneToPaymentDays: trialDoneToPaymentDays.length,
-      sampleTrial: trials[0] ? Object.keys(trials[0]) : [],
-      samplePayment: payments[0] ? Object.keys(payments[0]) : [],
-    });
+    console.log('[TAT] leadToSlotDays count:', leadToSlotDays.length);
+    console.log('[TAT] trialDoneToPaymentDays count:', trialDoneToPaymentDays.length);
+    console.log('[TAT] sample trial columns:', trials[0] ? Object.keys(trials[0]).join(', ') : 'none');
+    console.log('[TAT] sample payment columns:', payments[0] ? Object.keys(payments[0]).join(', ') : 'none');
+    console.log('[TAT] sample lead columns:', leads[0] ? Object.keys(leads[0]).join(', ') : 'none');
+    if (trials[0]) console.log('[TAT] sample trial values:', JSON.stringify(trials[0]));
+    if (payments[0]) console.log('[TAT] sample payment values:', JSON.stringify(payments[0]));
 
     // Analytics calculations — refunds scoped to ME
     const referrals = rawData.referrals;
