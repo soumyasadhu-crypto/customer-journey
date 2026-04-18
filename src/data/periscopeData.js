@@ -248,24 +248,36 @@ export function useFunnelData() {
     });
 
     // TAT calculations — using same month+ME filtered leads/trials/payments
-    const trialByProspect = new Map();
-    trials.forEach(t => { if (t.prospectid) trialByProspect.set(t.prospectid, t); });
-
-    const paymentByProspect = new Map();
-    payments.forEach(p => { if (p.prospectid) paymentByProspect.set(p.prospectid, p); });
+    const parseDate = (d) => {
+      if (!d || !d.trim()) return NaN;
+      // handles YYYY-MM-DD, YYYY-MM-DD HH:MM:SS, ISO strings
+      return new Date(d.trim().replace(' ', 'T')).getTime();
+    };
 
     const daysBetween = (d1, d2) => {
-      const t1 = new Date(d1).getTime();
-      const t2 = new Date(d2).getTime();
+      const t1 = parseDate(d1);
+      const t2 = parseDate(d2);
       if (isNaN(t1) || isNaN(t2)) return null;
       return Math.round(Math.abs(t2 - t1) / 86400000);
     };
+
+    // Build maps: prospectid → trial record (prefer DONE trial for slot lookup)
+    const trialByProspect = new Map();
+    trials.forEach(t => {
+      if (!t.prospectid) return;
+      const existing = trialByProspect.get(t.prospectid);
+      // prefer DONE record so slot_created_date is most relevant
+      if (!existing || t.demo_state === 'DONE') trialByProspect.set(t.prospectid, t);
+    });
+
+    const paymentByProspect = new Map();
+    payments.forEach(p => { if (p.prospectid) paymentByProspect.set(p.prospectid, p); });
 
     // Lead → Slot Created: lead_created_date → slot_created_date
     const leadToSlotDays = [];
     leads.forEach(l => {
       const trial = trialByProspect.get(l.prospectid);
-      if (!trial || !l.lead_created_date || !trial.slot_created_date) return;
+      if (!trial) return;
       const d = daysBetween(l.lead_created_date, trial.slot_created_date);
       if (d !== null) leadToSlotDays.push(d);
     });
@@ -276,15 +288,23 @@ export function useFunnelData() {
     // Trial Done → Payment: demo_schedule_date (DONE) → paid_on
     const trialDoneToPaymentDays = [];
     trials.forEach(t => {
-      if (t.demo_state !== 'DONE' || !t.demo_schedule_date) return;
+      if (t.demo_state !== 'DONE') return;
       const payment = paymentByProspect.get(t.prospectid);
-      if (!payment || !payment.paid_on) return;
+      if (!payment) return;
       const d = daysBetween(t.demo_schedule_date, payment.paid_on);
       if (d !== null) trialDoneToPaymentDays.push(d);
     });
     const avgTrialDoneToPaymentDays = trialDoneToPaymentDays.length > 0
       ? (trialDoneToPaymentDays.reduce((s, v) => s + v, 0) / trialDoneToPaymentDays.length).toFixed(1)
       : null;
+
+    console.log('[TAT]', {
+      leads: leads.length, trials: trials.length, payments: payments.length,
+      trialMapSize: trialByProspect.size, paymentMapSize: paymentByProspect.size,
+      leadToSlotDays: leadToSlotDays.length, trialDoneToPaymentDays: trialDoneToPaymentDays.length,
+      sampleTrial: trials[0] ? Object.keys(trials[0]) : [],
+      samplePayment: payments[0] ? Object.keys(payments[0]) : [],
+    });
 
     // Analytics calculations — refunds scoped to ME
     const referrals = rawData.referrals;
