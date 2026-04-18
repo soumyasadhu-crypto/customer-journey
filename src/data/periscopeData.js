@@ -405,6 +405,8 @@ export function useFunnelData() {
         let bucket;
         if (isNaN(val)) {
           bucket = 'Unknown';
+        } else if (val >= 100) {
+          bucket = '100+';
         } else {
           const lower = Math.floor(val / 10) * 10;
           bucket = `${lower}-${lower + 9}`;
@@ -414,11 +416,11 @@ export function useFunnelData() {
       // Sort buckets numerically
       return Object.fromEntries(
         Object.entries(out).sort((a, b) => {
-          const aNum = parseInt(a[0]);
-          const bNum = parseInt(b[0]);
-          if (isNaN(aNum)) return 1;
-          if (isNaN(bNum)) return -1;
-          return aNum - bNum;
+          if (a[0] === 'Unknown') return 1;
+          if (b[0] === 'Unknown') return -1;
+          if (a[0] === '100+') return 1;
+          if (b[0] === '100+') return -1;
+          return parseInt(a[0]) - parseInt(b[0]);
         })
       );
     })();
