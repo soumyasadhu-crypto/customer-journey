@@ -436,7 +436,17 @@ export function useFunnelData() {
       return Object.fromEntries(order.filter(k => out[k]).map(k => [k, out[k]]));
     })();
     const activeBaseByClassPerWeek  = countBy(activeBase, 'classes_per_week');
-    const activeBaseByGrade         = countBy(activeBase, 'current_grade');
+    const activeBaseByGrade = (() => {
+      const out = { '0-2': 0, '3-8': 0, '9-12': 0, 'Unknown': 0 };
+      activeBase.forEach(a => {
+        const g = parseInt(a.current_grade);
+        if (isNaN(g))       out['Unknown']++;
+        else if (g <= 2)    out['0-2']++;
+        else if (g <= 8)    out['3-8']++;
+        else                out['9-12']++;
+      });
+      return Object.fromEntries(Object.entries(out).filter(([, v]) => v > 0));
+    })();
     const activeBaseByClassRatio    = countBy(activeBase, 'class_ratio');
 
     setAnalyticsData({
