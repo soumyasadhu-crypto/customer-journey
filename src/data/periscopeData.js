@@ -343,6 +343,11 @@ export function useFunnelData() {
       const ch = r.channel || 'Unknown';
       referralsByChannel[ch] = (referralsByChannel[ch] || 0) + 1;
     });
+    const referralsByMonth = {};
+    filteredReferrals.forEach(r => {
+      const m = (r.created_on || '').slice(0, 7) || 'Unknown';
+      referralsByMonth[m] = (referralsByMonth[m] || 0) + 1;
+    });
 
     setAnalyticsData({
       totalRefunds,
@@ -356,6 +361,7 @@ export function useFunnelData() {
       totalReferrals,
       successfulReferrals,
       referralsByChannel,
+      referralsByMonth,
       avgLeadToSlotDays,
       leadToSlotCount: leadToSlotDays.length,
       avgTrialDoneToPaymentDays,

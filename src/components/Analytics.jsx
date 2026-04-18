@@ -54,6 +54,7 @@ export default function Analytics({ data, rawData }) {
     totalReferrals,
     successfulReferrals,
     referralsByChannel,
+    referralsByMonth,
     avgLeadToSlotDays,
     leadToSlotCount,
     avgTrialDoneToPaymentDays,
@@ -228,6 +229,11 @@ export default function Analytics({ data, rawData }) {
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Conversion Rate</p>
               <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{referralRate}%</p>
             </div>
+          </div>
+
+          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Referrals by Month</h4>
+            {renderBarChart(referralsByMonth, totalReferrals, '#2563EB')}
           </div>
 
           <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
