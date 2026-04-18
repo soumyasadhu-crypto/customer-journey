@@ -377,17 +377,14 @@ export function useFunnelData() {
     });
     const avgLeadAgeDays = leadsWithValidDate > 0 ? Math.round(totalLeadAgeDays / leadsWithValidDate) : null;
 
-    // Referrals: filter to referrals given BY active base (from_actor_id in active base parent IDs)
-    // then count unique to_actor_id
-    const activeBaseParentIds = new Set(activeBase.map(a => a.parent_service_id).filter(Boolean));
+    // Referrals: computed directly from active base table using to_actor_id and actor_meta
     const referralsGivenToIds = new Set();
     const successfulReferralToIds = new Set();
-    rawData.referrals.forEach(r => {
-      if (!r.from_actor_id || !activeBaseParentIds.has(r.from_actor_id)) return;
-      if (!r.to_actor_id) return;
-      referralsGivenToIds.add(r.to_actor_id);
-      if ((r.actor_meta || '').includes('"referee":{"state":"STUDENT_FEE_PAID"')) {
-        successfulReferralToIds.add(r.to_actor_id);
+    rawActiveBase.forEach(a => {
+      if (!a.to_actor_id) return;
+      referralsGivenToIds.add(a.to_actor_id);
+      if ((a.actor_meta || '').includes('"referee":{"state":"STUDENT_FEE_PAID"')) {
+        successfulReferralToIds.add(a.to_actor_id);
       }
     });
     const activeReferralsGiven = referralsGivenToIds.size;
