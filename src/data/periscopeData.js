@@ -282,8 +282,7 @@ export function useFunnelData() {
 
     const filteredReferrals = referrals.filter(r => r.country_bucket === 'ME');
     const totalReferrals = filteredReferrals.length;
-    const acceptedReferrals = filteredReferrals.filter(r => r.is_valid === 'true' || r.is_deleted === 'false').length;
-    const pendingReferrals = filteredReferrals.filter(r => r.is_deleted !== 'true').length;
+    const successfulReferrals = filteredReferrals.filter(r => (r.actor_meta || '').includes('STUDENT_FEE_PAID')).length;
     const referralsByChannel = {};
     filteredReferrals.forEach(r => {
       const ch = r.channel || 'Unknown';
@@ -300,8 +299,7 @@ export function useFunnelData() {
       avgClassesCompleted,
       totalRefundedINR,
       totalReferrals,
-      acceptedReferrals,
-      pendingReferrals,
+      successfulReferrals,
       referralsByChannel
     });
   }, [month, rawData]);

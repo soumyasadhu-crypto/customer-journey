@@ -52,12 +52,11 @@ export default function Analytics({ data, rawData }) {
     avgClassesCompleted,
     totalRefundedINR,
     totalReferrals,
-    acceptedReferrals,
-    pendingReferrals,
+    successfulReferrals,
     referralsByChannel
   } = data;
 
-  const referralRate = totalReferrals > 0 ? ((acceptedReferrals / totalReferrals) * 100).toFixed(1) : 0;
+  const referralRate = totalReferrals > 0 ? ((successfulReferrals / totalReferrals) * 100).toFixed(1) : 0;
 
   const handleExport = () => {
     if (!rawData) {
@@ -203,8 +202,8 @@ export default function Analytics({ data, rawData }) {
               <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{formatNumber(totalReferrals)}</p>
             </div>
             <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Accepted</p>
-              <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{formatNumber(acceptedReferrals)}</p>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Successful Referrals</p>
+              <p style={{ fontSize: 28, fontWeight: 700, color: '#10B981' }}>{formatNumber(successfulReferrals)}</p>
             </div>
             <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Conversion Rate</p>
