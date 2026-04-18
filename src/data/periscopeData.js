@@ -247,11 +247,10 @@ export function useFunnelData() {
       enrolled: enrolledIds.size
     });
 
-    // Analytics calculations
-    const refunds = rawData.refunds;
+    // Analytics calculations — refunds scoped to ME
     const referrals = rawData.referrals;
 
-    let filteredRefunds = refunds;
+    let filteredRefunds = rawData.refunds.filter(r => r.country_bucket === 'ME');
     if (month !== 'all') {
       filteredRefunds = filteredRefunds.filter(r => r.refunded_month === month);
     }
@@ -262,10 +261,10 @@ export function useFunnelData() {
       const m = r.refunded_month || 'Unknown';
       refundsByMonth[m] = (refundsByMonth[m] || 0) + 1;
     });
-    const refundsByRegion = {};
+    const refundsByChannel = {};
     filteredRefunds.forEach(r => {
-      const reg = r.derived_region || 'Unknown';
-      refundsByRegion[reg] = (refundsByRegion[reg] || 0) + 1;
+      const ch = r.channel || 'Unknown';
+      refundsByChannel[ch] = (refundsByChannel[ch] || 0) + 1;
     });
     const refundsByClassesBucket = {};
     filteredRefunds.forEach(r => {
@@ -293,10 +292,8 @@ export function useFunnelData() {
     setAnalyticsData({
       totalRefunds,
       refundedAmount: totalRefundedINR,
-      refundsByReason: refundsByMonth,
       refundsByMonth,
-      refundsByRegion,
-      refundsByChannel: refundsByClassesBucket,
+      refundsByChannel,
       refundsByClassesBucket,
       refundsByTenure,
       avgClassesCompleted,
