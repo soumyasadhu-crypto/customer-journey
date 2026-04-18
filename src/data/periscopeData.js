@@ -280,7 +280,10 @@ export function useFunnelData() {
     const avgClassesCompleted = totalRefunds > 0 ? Math.round(totalClassesCompleted / totalRefunds) : 0;
     const totalRefundedINR = filteredRefunds.reduce((sum, r) => sum + (parseFloat(r.refund_amount_inr) || 0), 0);
 
-    const filteredReferrals = referrals.filter(r => r.country_bucket === 'ME');
+    let filteredReferrals = referrals.filter(r => r.country_bucket === 'ME');
+    if (month !== 'all') {
+      filteredReferrals = filteredReferrals.filter(r => (r.created_on || '').slice(0, 7) === month);
+    }
     const totalReferrals = filteredReferrals.length;
     const successfulReferrals = filteredReferrals.filter(r => (r.actor_meta || '').includes('STUDENT_FEE_PAID')).length;
     const referralsByChannel = {};
