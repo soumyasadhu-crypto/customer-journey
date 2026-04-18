@@ -424,7 +424,17 @@ export function useFunnelData() {
         })
       );
     })();
-    const activeBaseByDuration      = countBy(activeBase, 'last_duration');
+    const validDurations = new Set(['1', '3', '6', '12', '18', '24']);
+    const activeBaseByDuration = (() => {
+      const out = {};
+      activeBase.forEach(a => {
+        const v = (a.last_duration || '').trim();
+        const bucket = validDurations.has(v) ? v : 'Others';
+        out[bucket] = (out[bucket] || 0) + 1;
+      });
+      const order = ['1', '3', '6', '12', '18', '24', 'Others'];
+      return Object.fromEntries(order.filter(k => out[k]).map(k => [k, out[k]]));
+    })();
     const activeBaseByClassPerWeek  = countBy(activeBase, 'classes_per_week');
     const activeBaseByGrade         = countBy(activeBase, 'current_grade');
     const activeBaseByClassRatio    = countBy(activeBase, 'class_ratio');
