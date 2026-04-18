@@ -351,12 +351,12 @@ export function useFunnelData() {
       referralsByMonth[m] = (referralsByMonth[m] || 0) + 1;
     });
 
-    // Active Base analytics — deduplicate by parent_service_id for unique student counts
+    // Active Base analytics — deduplicate by student_id for unique student counts
     const rawActiveBase = rawData.activeBase || [];
     const seenActiveIds = new Set();
     const activeBase = [];
     rawActiveBase.forEach(a => {
-      const id = a.parent_service_id;
+      const id = a.student_id;
       if (id && !seenActiveIds.has(id)) { seenActiveIds.add(id); activeBase.push(a); }
     });
 
