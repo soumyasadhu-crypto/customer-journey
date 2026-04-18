@@ -1,65 +1,9 @@
 import { useState } from 'react';
-import { FiDownload, FiX } from 'react-icons/fi';
-import { useAuth } from '../context/AuthContext';
-
-function PasswordGateModal({ onAuthorize, onClose }) {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const err = onAuthorize(password);
-    if (err) setError(err);
-  };
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 12, padding: 32, width: 360,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Enter password to export</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}>
-            <FiX size={18} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <input
-            autoFocus
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => { setPassword(e.target.value); setError(''); }}
-            style={{
-              width: '100%', padding: '10px 12px', borderRadius: 6, fontSize: 14,
-              border: error ? '1px solid #EF4444' : '1px solid #E2E8F0',
-              outline: 'none', boxSizing: 'border-box', marginBottom: 8,
-            }}
-          />
-          {error && <p style={{ fontSize: 12, color: '#EF4444', margin: '0 0 8px' }}>{error}</p>}
-          <button type="submit" style={{
-            width: '100%', padding: '10px', background: '#2563EB', color: '#fff',
-            border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-          }}>
-            Confirm
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 export default function FunnelFlowChart({ data, rawData }) {
   const [viewMode, setViewMode] = useState('channel'); // 'channel' | 'campaign'
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [showEmailGate, setShowEmailGate] = useState(false);
-  const [pendingExport, setPendingExport] = useState(null);
-  const { user, authorizeWithPassword } = useAuth();
 
   if (!data || !data.channelBreakdown) {
     return <div className="funnel-section">Loading...</div>;
@@ -104,157 +48,11 @@ export default function FunnelFlowChart({ data, rawData }) {
     { id: 'enrolled',       label: 'Enrolled',         value: cd.enrolled,       color: '#10B981', key: 'Enrolled',         rateLabel: 'vs Trial Done',       denominator: cd.trialDone },
   ];
 
-  const handleExport = (stageName) => {
-    if (!user) {
-      setPendingExport(stageName);
-      setShowEmailGate(true);
-      return;
-    }
-    runExport(stageName);
-  };
-
-  const handlePasswordAuthorized = (password) => {
-    const err = authorizeWithPassword(password);
-    if (err) return err;
-    setShowEmailGate(false);
-    if (pendingExport) runExport(pendingExport);
-    setPendingExport(null);
-    return null;
-  };
-
-  const runExport = (stageName) => {
-    if (!rawData?.leads) {
-      alert('Data not available');
-      return;
-    }
-
-    const prospectToCampaign = new Map();
-    (rawData.campaigns || []).forEach(c => {
-      if (c.prospectid) {
-        const label = c['Final Campaign Category'] || c['Campaign Category'] || c['mx_utm_campaign'] || '';
-        prospectToCampaign.set(c.prospectid, label);
-      }
-    });
-
-    // Multi-trial support: group trials by prospectid
-    const trialsByProspect = new Map();
-    const trialScheduledSet = new Set();
-    (rawData.trials || []).forEach(t => {
-      if (!t.prospectid || t.demo_state === 'Future Scheduled') return;
-      trialScheduledSet.add(t.prospectid);
-      if (!trialsByProspect.has(t.prospectid)) trialsByProspect.set(t.prospectid, []);
-      trialsByProspect.get(t.prospectid).push(t);
-    });
-
-    const trialDoneProspects = new Set();
-    const trialPendingProspects = new Set();
-    trialsByProspect.forEach((list, id) => {
-      if (list.some(t => t.demo_state === 'DONE')) trialDoneProspects.add(id);
-      else trialPendingProspects.add(id);
-    });
-
-    const paidIds = new Set((rawData.payments || []).map(p => p.prospectid).filter(Boolean));
-
-    // Apply channel/campaign filter to leads
-    let leads = rawData.leads.filter(l => l.channel !== 'Organic Content');
-    if (viewMode === 'channel' && selectedChannel) {
-      leads = leads.filter(l => l.channel === selectedChannel);
-    } else if (viewMode === 'campaign' && selectedCampaign) {
-      leads = leads.filter(l => prospectToCampaign.get(l.prospectid) === selectedCampaign);
-    }
-    const leadIds = new Set(leads.map(l => l.prospectid).filter(Boolean));
-
-    let exportRows = [];
-
-    if (stageName === 'Leads') {
-      // Lead dump enriched with campaign
-      exportRows = leads.map(l => ({ ...l, campaign: prospectToCampaign.get(l.prospectid) || '' }));
-
-    } else if (stageName === 'Schedule Pending') {
-      // Leads NOT in trials table at all, NOT paid
-      exportRows = leads
-        .filter(l => l.prospectid && !trialScheduledSet.has(l.prospectid) && !paidIds.has(l.prospectid))
-        .map(l => ({ ...l, campaign: prospectToCampaign.get(l.prospectid) || '' }));
-
-    } else if (stageName === 'Trial Scheduled') {
-      // Trial dump: all trial records for prospects with any trial, scoped to filtered leads
-      exportRows = (rawData.trials || []).filter(t =>
-        t.prospectid && leadIds.has(t.prospectid) && t.demo_state !== 'Future Scheduled'
-      );
-
-    } else if (stageName === 'Trial Pending') {
-      // Trial dump: all trial records for prospects with NO DONE trial, scoped to filtered leads
-      exportRows = (rawData.trials || []).filter(t =>
-        t.prospectid &&
-        leadIds.has(t.prospectid) &&
-        trialPendingProspects.has(t.prospectid) &&
-        t.demo_state !== 'Future Scheduled'
-      );
-
-    } else if (stageName === 'Trial Done') {
-      // Trial dump: DONE trial records for filtered leads
-      exportRows = (rawData.trials || []).filter(t =>
-        t.prospectid && leadIds.has(t.prospectid) && t.demo_state === 'DONE'
-      );
-
-    } else if (stageName === 'Payment Pending') {
-      // Trial dump: DONE trial records for prospects with no payment, scoped to filtered leads
-      exportRows = (rawData.trials || []).filter(t =>
-        t.prospectid &&
-        leadIds.has(t.prospectid) &&
-        t.demo_state === 'DONE' &&
-        !paidIds.has(t.prospectid)
-      );
-
-    } else if (stageName === 'Enrolled') {
-      // Payment dump: payment records for filtered leads
-      exportRows = (rawData.payments || []).filter(p =>
-        p.prospectid && leadIds.has(p.prospectid)
-      );
-
-    } else if (stageName === 'Future Scheduled') {
-      // Trial dump: future scheduled trial records for filtered leads
-      exportRows = (rawData.trials || []).filter(t =>
-        t.prospectid && leadIds.has(t.prospectid) && t.demo_state === 'Future Scheduled'
-      );
-    }
-
-    if (!exportRows || exportRows.length === 0) {
-      alert(`No data for ${stageName}`);
-      return;
-    }
-
-    try {
-      const headers = Object.keys(exportRows[0]);
-      const rows = exportRows.map(row => headers.map(h => `"${(row[h] || '').toString().replace(/"/g, '""')}"`));
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const prefix = viewMode === 'campaign'
-        ? (selectedCampaign || 'all_campaigns')
-        : (selectedChannel || 'all_channels');
-      a.download = `${prefix}_${stageName.toLowerCase().replace(/ /g, '_')}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('Error exporting data');
-    }
-  };
-
   const activeSelection = viewMode === 'channel' ? selectedChannel : selectedCampaign;
   const setActiveSelection = viewMode === 'channel' ? setSelectedChannel : setSelectedCampaign;
 
   return (
     <div className="funnel-section">
-      {showEmailGate && (
-        <PasswordGateModal
-          onAuthorize={handlePasswordAuthorized}
-          onClose={() => { setShowEmailGate(false); setPendingExport(null); }}
-        />
-      )}
       <h3 className="section-title">Customer Journey Flow</h3>
 
       {/* View mode toggle */}
@@ -381,22 +179,6 @@ export default function FunnelFlowChart({ data, rawData }) {
                   {convRate}%
                 </div>
               ) : <div style={{ width: 52 }} />}
-              <button
-                onClick={() => handleExport(stage.key)}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: 4,
-                  fontSize: 11,
-                  background: '#F1F5F9',
-                  border: '1px solid #E2E8F0',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <FiDownload size={12} /> Export
-              </button>
             </div>
           );
         })}
@@ -438,22 +220,6 @@ export default function FunnelFlowChart({ data, rawData }) {
             {cd.futureScheduled.toLocaleString()}
           </div>
           <div style={{ width: 52 }} />
-          <button
-            onClick={() => handleExport('Future Scheduled')}
-            style={{
-              padding: '4px 8px',
-              borderRadius: 4,
-              fontSize: 11,
-              background: '#FEF3C7',
-              border: '1px solid #F59E0B',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <FiDownload size={12} /> Export
-          </button>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import FunnelFlowChart from './components/FunnelFlowChart';
 import Analytics from './components/Analytics';
+import Reports from './components/Reports';
 import { useFunnelData } from './data/periscopeData';
 
 function Dashboard({ activeTab, setActiveTab }) {
@@ -45,7 +46,7 @@ function Dashboard({ activeTab, setActiveTab }) {
               <div style={{ padding: 20 }}>
                 <h2>Analytics</h2>
                 {analyticsData ? (
-                  <Analytics data={analyticsData} rawData={rawData} />
+                  <Analytics data={analyticsData} />
                 ) : (
                   <div style={{ padding: 40, textAlign: 'center' }}>
                     <p>Loading analytics data...</p>
@@ -54,10 +55,7 @@ function Dashboard({ activeTab, setActiveTab }) {
               </div>
             )}
             {activeTab === 'reports' && (
-              <div style={{ padding: 24 }}>
-                <h2>Reports</h2>
-                <p style={{ color: '#64748B' }}>Reports section coming soon...</p>
-              </div>
+              <Reports rawData={rawData} />
             )}
             {activeTab === 'settings' && (
               <div style={{ padding: 24 }}>

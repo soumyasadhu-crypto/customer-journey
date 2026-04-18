@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { FiDownload } from 'react-icons/fi';
 
 function formatCurrency(amount) {
   if (!amount) return '₹0';
@@ -35,7 +34,7 @@ function renderBarChart(data, total, color = '#DC2626') {
   ));
 }
 
-export default function Analytics({ data, rawData }) {
+export default function Analytics({ data }) {
   const [activeSection, setActiveSection] = useState('refunds');
 
   if (!data) {
@@ -63,57 +62,10 @@ export default function Analytics({ data, rawData }) {
 
   const referralRate = totalReferrals > 0 ? ((successfulReferrals / totalReferrals) * 100).toFixed(1) : 0;
 
-  const handleExport = () => {
-    if (!rawData) {
-      alert('Data not available');
-      return;
-    }
-
-    const exportData = activeSection === 'refunds' ? rawData.refunds : rawData.referrals;
-    if (!exportData || exportData.length === 0) {
-      alert('No data to export');
-      return;
-    }
-
-    try {
-      const headers = Object.keys(exportData[0]);
-      const rows = exportData.map(row => headers.map(h => row[h]));
-      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-      
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${activeSection}_data.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      alert('Error exporting data');
-    }
-  };
-
   return (
     <div className="analytics-section">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ marginBottom: 24 }}>
         <h3 className="section-title">Analytics</h3>
-        <button
-          onClick={handleExport}
-          style={{
-            padding: '8px 16px',
-            background: '#2563EB',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}
-        >
-          <FiDownload size={14} /> Export
-        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
@@ -183,7 +135,7 @@ export default function Analytics({ data, rawData }) {
             <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
               <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Refund Rate</p>
               <p style={{ fontSize: 28, fontWeight: 700, color: '#DC2626' }}>
-                {rawData?.payments?.length > 0 ? ((totalRefunds / rawData.payments.length) * 100).toFixed(1) : 0}%
+                {data.refundRate ? data.refundRate + '%' : '—'}
               </p>
             </div>
           </div>
