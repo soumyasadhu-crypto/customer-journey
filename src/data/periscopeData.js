@@ -397,7 +397,30 @@ export function useFunnelData() {
     };
 
     const activeBaseByProduct       = countBy(activeBase, 'last_product');
-    const activeBaseByBalanceBucket = countBy(activeBase, 'classes_balance');
+    const activeBaseByBalanceBucket = (() => {
+      const out = {};
+      activeBase.forEach(a => {
+        const val = parseFloat(a.classes_balance);
+        let bucket;
+        if (isNaN(val)) {
+          bucket = 'Unknown';
+        } else {
+          const lower = Math.floor(val / 10) * 10;
+          bucket = `${lower}-${lower + 9}`;
+        }
+        out[bucket] = (out[bucket] || 0) + 1;
+      });
+      // Sort buckets numerically
+      return Object.fromEntries(
+        Object.entries(out).sort((a, b) => {
+          const aNum = parseInt(a[0]);
+          const bNum = parseInt(b[0]);
+          if (isNaN(aNum)) return 1;
+          if (isNaN(bNum)) return -1;
+          return aNum - bNum;
+        })
+      );
+    })();
     const activeBaseByDuration      = countBy(activeBase, 'last_duration');
     const activeBaseByClassPerWeek  = countBy(activeBase, 'classes_per_week');
     const activeBaseByGrade         = countBy(activeBase, 'current_grade');
