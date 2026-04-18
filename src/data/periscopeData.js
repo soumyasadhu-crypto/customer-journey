@@ -377,17 +377,21 @@ export function useFunnelData() {
     });
     const avgLeadAgeDays = leadsWithValidDate > 0 ? Math.round(totalLeadAgeDays / leadsWithValidDate) : null;
 
-    // Referrals: count unique parent_service_ids from active base that appear as from_actor_id
+    // Referrals: filter to referrals given BY active base (from_actor_id in active base parent IDs)
+    // then count unique to_actor_id
     const activeBaseParentIds = new Set(activeBase.map(a => a.parent_service_id).filter(Boolean));
-    const referralsGivenParents = new Set();
-    const successfulReferralParents = new Set();
+    const referralsGivenToIds = new Set();
+    const successfulReferralToIds = new Set();
     rawData.referrals.forEach(r => {
       if (!r.from_actor_id || !activeBaseParentIds.has(r.from_actor_id)) return;
-      referralsGivenParents.add(r.from_actor_id);
-      if ((r.actor_meta || '').includes('STUDENT_FEE_PAID')) successfulReferralParents.add(r.from_actor_id);
+      if (!r.to_actor_id) return;
+      referralsGivenToIds.add(r.to_actor_id);
+      if ((r.actor_meta || '').includes('"referee":{"state":"STUDENT_FEE_PAID"')) {
+        successfulReferralToIds.add(r.to_actor_id);
+      }
     });
-    const activeReferralsGiven = referralsGivenParents.size;
-    const activeSuccessfulReferrals = successfulReferralParents.size;
+    const activeReferralsGiven = referralsGivenToIds.size;
+    const activeSuccessfulReferrals = successfulReferralToIds.size;
 
     // Count unique students per breakdown value
     const countBy = (arr, key) => {
