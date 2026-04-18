@@ -96,15 +96,15 @@ export function useFunnelData() {
         if (!hasData) {
           console.log('Using fallback mock data');
           const mockLeads = [
-            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Google', country_bucket: 'India', prospectid: '1', region: 'India', lead_created_date: '2026-03-01' },
-            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Facebook', country_bucket: 'India', prospectid: '2', region: 'India', lead_created_date: '2026-03-02' },
-            { lead_created_month: '2026-03', prospectstage: 'Demo Done', channel: 'Google', country_bucket: 'India', prospectid: '3', region: 'India', lead_created_date: '2026-03-03' }
+            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Google', country_bucket: 'ME', prospectid: '1', lead_created_date: '2026-03-01' },
+            { lead_created_month: '2026-03', prospectstage: 'Lead', channel: 'Facebook', country_bucket: 'ME', prospectid: '2', lead_created_date: '2026-03-02' },
+            { lead_created_month: '2026-03', prospectstage: 'Demo Done', channel: 'Google', country_bucket: 'ME', prospectid: '3', lead_created_date: '2026-03-03' }
           ];
           const mockTrials = [
-            { prospectid: '3', demo_state: 'DONE', channel: 'Google', lead_created_month: '2026-03', region: 'India' }
+            { prospectid: '3', demo_state: 'DONE', channel: 'Google', lead_created_month: '2026-03', country_bucket: 'ME' }
           ];
           const mockPayments = [
-            { prospectid: '3', mode: 'GA', lead_created_month: '2026-03', region: 'India' }
+            { prospectid: '3', lead_created_month: '2026-03', country_bucket: 'ME' }
           ];
           const mockRefunds = [
             { refund_reason: 'Quality Issue', refund_amount: '5000' },
@@ -306,7 +306,7 @@ export function useFunnelData() {
       pendingReferrals,
       referralsByChannel: referralsBySource
     });
-  }, [month, region, countryBuckets, rawData]);
+  }, [month, rawData]);
 
   return {
     loading, error, funnelData, analyticsData, availableMonths,
