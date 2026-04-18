@@ -247,6 +247,45 @@ export function useFunnelData() {
       enrolled: enrolledIds.size
     });
 
+    // TAT calculations — using same month+ME filtered leads/trials/payments
+    const trialByProspect = new Map();
+    trials.forEach(t => { if (t.prospectid) trialByProspect.set(t.prospectid, t); });
+
+    const paymentByProspect = new Map();
+    payments.forEach(p => { if (p.prospectid) paymentByProspect.set(p.prospectid, p); });
+
+    const daysBetween = (d1, d2) => {
+      const t1 = new Date(d1).getTime();
+      const t2 = new Date(d2).getTime();
+      if (isNaN(t1) || isNaN(t2)) return null;
+      return Math.round(Math.abs(t2 - t1) / 86400000);
+    };
+
+    // Lead → Slot Created: lead_created_date → slot_created_date
+    const leadToSlotDays = [];
+    leads.forEach(l => {
+      const trial = trialByProspect.get(l.prospectid);
+      if (!trial || !l.lead_created_date || !trial.slot_created_date) return;
+      const d = daysBetween(l.lead_created_date, trial.slot_created_date);
+      if (d !== null) leadToSlotDays.push(d);
+    });
+    const avgLeadToSlotDays = leadToSlotDays.length > 0
+      ? (leadToSlotDays.reduce((s, v) => s + v, 0) / leadToSlotDays.length).toFixed(1)
+      : null;
+
+    // Trial Done → Payment: demo_schedule_date (DONE) → paid_on
+    const trialDoneToPaymentDays = [];
+    trials.forEach(t => {
+      if (t.demo_state !== 'DONE' || !t.demo_schedule_date) return;
+      const payment = paymentByProspect.get(t.prospectid);
+      if (!payment || !payment.paid_on) return;
+      const d = daysBetween(t.demo_schedule_date, payment.paid_on);
+      if (d !== null) trialDoneToPaymentDays.push(d);
+    });
+    const avgTrialDoneToPaymentDays = trialDoneToPaymentDays.length > 0
+      ? (trialDoneToPaymentDays.reduce((s, v) => s + v, 0) / trialDoneToPaymentDays.length).toFixed(1)
+      : null;
+
     // Analytics calculations — refunds scoped to ME
     const referrals = rawData.referrals;
 
@@ -303,7 +342,11 @@ export function useFunnelData() {
       totalRefundedINR,
       totalReferrals,
       successfulReferrals,
-      referralsByChannel
+      referralsByChannel,
+      avgLeadToSlotDays,
+      leadToSlotCount: leadToSlotDays.length,
+      avgTrialDoneToPaymentDays,
+      trialDoneToPaymentCount: trialDoneToPaymentDays.length
     });
   }, [month, rawData]);
 

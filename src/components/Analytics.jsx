@@ -53,7 +53,11 @@ export default function Analytics({ data, rawData }) {
     totalRefundedINR,
     totalReferrals,
     successfulReferrals,
-    referralsByChannel
+    referralsByChannel,
+    avgLeadToSlotDays,
+    leadToSlotCount,
+    avgTrialDoneToPaymentDays,
+    trialDoneToPaymentCount
   } = data;
 
   const referralRate = totalReferrals > 0 ? ((successfulReferrals / totalReferrals) * 100).toFixed(1) : 0;
@@ -142,6 +146,21 @@ export default function Analytics({ data, rawData }) {
         >
           Referrals
         </button>
+        <button
+          onClick={() => setActiveSection('tat')}
+          style={{
+            padding: '10px 20px',
+            background: activeSection === 'tat' ? '#2563EB' : '#fff',
+            color: activeSection === 'tat' ? '#fff' : '#0F172A',
+            border: '1px solid #E2E8F0',
+            borderRadius: 6,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer'
+          }}
+        >
+          TAT Analysis
+        </button>
       </div>
 
       {activeSection === 'refunds' && (
@@ -214,6 +233,42 @@ export default function Analytics({ data, rawData }) {
           <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Referrals by Channel</h4>
             {renderBarChart(referralsByChannel, totalReferrals, '#10B981')}
+          </div>
+        </div>
+      )}
+
+      {activeSection === 'tat' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
+            {/* Lead → Slot Created */}
+            <div style={{ padding: 24, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Lead → Trial Slot Scheduled</p>
+              <p style={{ fontSize: 40, fontWeight: 700, color: '#2563EB', lineHeight: 1.1 }}>
+                {avgLeadToSlotDays !== null ? avgLeadToSlotDays : '—'}
+                <span style={{ fontSize: 18, fontWeight: 400, color: '#64748B', marginLeft: 6 }}>days</span>
+              </p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 8 }}>
+                Average time from lead creation to trial slot scheduled
+              </p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                Based on {leadToSlotCount || 0} leads with slot data
+              </p>
+            </div>
+
+            {/* Trial Done → Payment */}
+            <div style={{ padding: 24, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 4 }}>Trial Done → Payment</p>
+              <p style={{ fontSize: 40, fontWeight: 700, color: '#10B981', lineHeight: 1.1 }}>
+                {avgTrialDoneToPaymentDays !== null ? avgTrialDoneToPaymentDays : '—'}
+                <span style={{ fontSize: 18, fontWeight: 400, color: '#64748B', marginLeft: 6 }}>days</span>
+              </p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 8 }}>
+                Average time from trial conducted to payment received
+              </p>
+              <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>
+                Based on {trialDoneToPaymentCount || 0} enrolled leads with date data
+              </p>
+            </div>
           </div>
         </div>
       )}
