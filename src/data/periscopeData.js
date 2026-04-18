@@ -380,17 +380,21 @@ export function useFunnelData() {
     // Referrals: computed directly from active base table using to_actor_id and actor_meta
     const referralsGivenToIds = new Set();
     const successfulReferralToIds = new Set();
-    const sampleMetas = [];
+    if (rawActiveBase.length > 0) {
+      console.log('[ActiveBase columns]', Object.keys(rawActiveBase[0]).join(', '));
+      console.log('[ActiveBase sample row]', JSON.stringify(rawActiveBase[0]));
+      const withToActor = rawActiveBase.filter(a => a.to_actor_id);
+      console.log('[ActiveBase] rows with to_actor_id:', withToActor.length);
+      if (withToActor.length > 0) console.log('[ActiveBase sample to_actor row]', JSON.stringify(withToActor[0]));
+    }
     rawActiveBase.forEach(a => {
       if (!a.to_actor_id) return;
       referralsGivenToIds.add(a.to_actor_id);
-      if (sampleMetas.length < 5 && a.actor_meta) sampleMetas.push(a.actor_meta);
       if ((a.actor_meta || '').includes('{"referee":{"state":"STUDENT_FEE_PAID"')) {
         successfulReferralToIds.add(a.to_actor_id);
       }
     });
     console.log('[ActiveBase referrals] given:', referralsGivenToIds.size, 'successful:', successfulReferralToIds.size);
-    console.log('[ActiveBase actor_meta samples]', sampleMetas);
     const activeReferralsGiven = referralsGivenToIds.size;
     const activeSuccessfulReferrals = successfulReferralToIds.size;
 
