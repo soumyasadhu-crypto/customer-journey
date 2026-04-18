@@ -68,7 +68,8 @@ export default function Analytics({ data }) {
     activeBaseByBalanceBucket,
     activeBaseByDuration,
     activeBaseByClassPerWeek,
-    activeBaseByGrade
+    activeBaseByGrade,
+    activeBaseByClassRatio
   } = data;
 
   const referralRate = totalReferrals > 0 ? ((successfulReferrals / totalReferrals) * 100).toFixed(1) : 0;
@@ -267,9 +268,15 @@ export default function Analytics({ data }) {
             </div>
           </div>
 
-          <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Grade</h4>
-            {renderBarChart(activeBaseByGrade, activeBaseTotal, '#F59E0B')}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Grade</h4>
+              {renderBarChart(activeBaseByGrade, activeBaseTotal, '#F59E0B')}
+            </div>
+            <div style={{ padding: 20, background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>By Class Ratio</h4>
+              {renderBarChart(activeBaseByClassRatio, activeBaseTotal, '#0EA5E9')}
+            </div>
           </div>
         </div>
       )}

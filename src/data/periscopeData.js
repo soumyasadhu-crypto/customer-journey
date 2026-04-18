@@ -351,10 +351,16 @@ export function useFunnelData() {
       referralsByMonth[m] = (referralsByMonth[m] || 0) + 1;
     });
 
-    // Active Base analytics
-    const activeBase = rawData.activeBase || [];
-    const today = new Date();
+    // Active Base analytics — deduplicate by parent_service_id for unique student counts
+    const rawActiveBase = rawData.activeBase || [];
+    const seenActiveIds = new Set();
+    const activeBase = [];
+    rawActiveBase.forEach(a => {
+      const id = a.parent_service_id;
+      if (id && !seenActiveIds.has(id)) { seenActiveIds.add(id); activeBase.push(a); }
+    });
 
+    const today = new Date();
     let totalLeadAgeDays = 0;
     let leadsWithValidDate = 0;
     let leadsAgeFourPlus = 0;
@@ -371,23 +377,31 @@ export function useFunnelData() {
     });
     const avgLeadAgeDays = leadsWithValidDate > 0 ? Math.round(totalLeadAgeDays / leadsWithValidDate) : null;
 
-    // Referrals from active base: join on parent_service_id = from_actor_id
+    // Referrals: count unique parent_service_ids from active base that appear as from_actor_id
     const activeBaseParentIds = new Set(activeBase.map(a => a.parent_service_id).filter(Boolean));
-    const activeBaseReferrals = rawData.referrals.filter(r => activeBaseParentIds.has(r.from_actor_id));
-    const activeReferralsGiven = activeBaseReferrals.length;
-    const activeSuccessfulReferrals = activeBaseReferrals.filter(r => (r.actor_meta || '').includes('STUDENT_FEE_PAID')).length;
+    const referralsGivenParents = new Set();
+    const successfulReferralParents = new Set();
+    rawData.referrals.forEach(r => {
+      if (!r.from_actor_id || !activeBaseParentIds.has(r.from_actor_id)) return;
+      referralsGivenParents.add(r.from_actor_id);
+      if ((r.actor_meta || '').includes('STUDENT_FEE_PAID')) successfulReferralParents.add(r.from_actor_id);
+    });
+    const activeReferralsGiven = referralsGivenParents.size;
+    const activeSuccessfulReferrals = successfulReferralParents.size;
 
+    // Count unique students per breakdown value
     const countBy = (arr, key) => {
       const out = {};
       arr.forEach(a => { const v = a[key] || 'Unknown'; out[v] = (out[v] || 0) + 1; });
       return out;
     };
 
-    const activeBaseByProduct      = countBy(activeBase, 'last_product');
-    const activeBaseByBalanceBucket = countBy(activeBase, 'class_balance_bucket');
-    const activeBaseByDuration     = countBy(activeBase, 'last_duration');
-    const activeBaseByClassPerWeek  = countBy(activeBase, 'class_per_week');
-    const activeBaseByGrade        = countBy(activeBase, 'grade');
+    const activeBaseByProduct       = countBy(activeBase, 'last_product');
+    const activeBaseByBalanceBucket = countBy(activeBase, 'classes_balance');
+    const activeBaseByDuration      = countBy(activeBase, 'last_duration');
+    const activeBaseByClassPerWeek  = countBy(activeBase, 'classes_per_week');
+    const activeBaseByGrade         = countBy(activeBase, 'current_grade');
+    const activeBaseByClassRatio    = countBy(activeBase, 'class_ratio');
 
     setAnalyticsData({
       totalRefunds,
@@ -416,7 +430,8 @@ export function useFunnelData() {
       activeBaseByBalanceBucket,
       activeBaseByDuration,
       activeBaseByClassPerWeek,
-      activeBaseByGrade
+      activeBaseByGrade,
+      activeBaseByClassRatio
     });
   }, [month, rawData]);
 
