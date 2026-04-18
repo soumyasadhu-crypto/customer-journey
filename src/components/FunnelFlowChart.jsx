@@ -177,10 +177,10 @@ export default function FunnelFlowChart({ data, rawData }) {
         .map(l => ({ ...l, campaign: prospectToCampaign.get(l.prospectid) || '' }));
 
     } else if (stageName === 'Trial Scheduled') {
-      // Lead dump for all leads that have a trial record
-      exportRows = leads
-        .filter(l => l.prospectid && trialScheduledSet.has(l.prospectid))
-        .map(l => ({ ...l, campaign: prospectToCampaign.get(l.prospectid) || '' }));
+      // Trial dump: all trial records for prospects with any trial, scoped to filtered leads
+      exportRows = (rawData.trials || []).filter(t =>
+        t.prospectid && leadIds.has(t.prospectid) && t.demo_state !== 'Future Scheduled'
+      );
 
     } else if (stageName === 'Trial Pending') {
       // Trial dump: all trial records for prospects with NO DONE trial, scoped to filtered leads
